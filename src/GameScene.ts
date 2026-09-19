@@ -1460,6 +1460,20 @@ export class GameScene extends Phaser.Scene {
     this.audioManager.setBgmMode('regular');
     this.coreHealth = TuningConfig.arena.coreMaxHealth;
     this.currentWave = 1;
+    if (typeof window !== 'undefined' && window.location && window.location.search) {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const waveParam = urlParams.get('wave');
+        if (waveParam) {
+          const parsed = parseInt(waveParam, 10);
+          if (!isNaN(parsed) && parsed > 0) {
+            this.currentWave = parsed;
+          }
+        }
+      } catch (e) {
+        // Fallback silently if query parsing fails
+      }
+    }
     this.score = 0;
     this.comboCount = 0;
     this.isOverloaded = false;
