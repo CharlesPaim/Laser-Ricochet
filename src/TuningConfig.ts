@@ -1,7 +1,11 @@
+import { GAME_VERSION, GAME_BUILD_DATE } from './VersionConfig';
+
 /**
  * Laser Ricochet: Blade Deflector - Centralized Tuning Configuration
  */
 export const TuningConfig = {
+  version: GAME_VERSION,
+  buildDate: GAME_BUILD_DATE,
   arena: {
     width: 960,
     height: 540,

@@ -141,6 +141,11 @@ export const translations: Record<SupportedLang, Record<string, string>> = {
 
     // Language Toggle
     lang_toggle: '🌐 EN',
+
+    // Patch Notes Modal
+    btn_patch_notes: '{version} • PATCH NOTES',
+    patch_notes_title: 'SYSTEM PATCH NOTES',
+    btn_close_patch_notes: '[ ✕ CLOSE ]',
   },
 
   pt: {
@@ -271,6 +276,11 @@ export const translations: Record<SupportedLang, Record<string, string>> = {
 
     // Language Toggle
     lang_toggle: '🌐 PT',
+
+    // Patch Notes Modal
+    btn_patch_notes: '{version} • NOTAS DA VERSÃO',
+    patch_notes_title: 'NOTAS DE ATUALIZAÇÃO',
+    btn_close_patch_notes: '[ ✕ FECHAR ]',
   },
 };
 

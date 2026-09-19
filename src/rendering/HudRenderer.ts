@@ -346,6 +346,52 @@ export class HudRenderer {
     g.lineBetween(hCardX + 28, hCardY + hCardH - 55, hCardX + hCardW - 28, hCardY + hCardH - 55);
   }
 
+  public static renderPatchNotesCard(
+    g: Phaser.GameObjects.Graphics,
+    cx: number,
+    cy: number,
+    width: number,
+    height: number
+  ): void {
+    // Backdrop escuro
+    g.fillStyle(0x04060d, 0.88);
+    g.fillRect(0, 0, width, height);
+
+    const cardW = 730;
+    const cardH = 400;
+    const cardX = cx - cardW / 2;
+    const cardY = cy - cardH / 2;
+    const chamfer = 18;
+
+    const poly = [
+      new Phaser.Math.Vector2(cardX + chamfer, cardY),
+      new Phaser.Math.Vector2(cardX + cardW - chamfer, cardY),
+      new Phaser.Math.Vector2(cardX + cardW, cardY + chamfer),
+      new Phaser.Math.Vector2(cardX + cardW, cardY + cardH - chamfer),
+      new Phaser.Math.Vector2(cardX + cardW - chamfer, cardY + cardH),
+      new Phaser.Math.Vector2(cardX + chamfer, cardY + cardH),
+      new Phaser.Math.Vector2(cardX, cardY + cardH - chamfer),
+      new Phaser.Math.Vector2(cardX, cardY + chamfer),
+    ];
+
+    g.fillStyle(0x070c18, 0.96);
+    g.fillPoints(poly, true);
+    g.lineStyle(2, 0x00f3ff, 0.9);
+    g.strokePoints(poly, true);
+
+    // Cantoneiras douradas decorativas
+    g.lineStyle(2, 0xffea00, 0.8);
+    g.lineBetween(cardX + chamfer, cardY, cardX + chamfer + 25, cardY);
+    g.lineBetween(cardX, cardY + chamfer, cardX, cardY + chamfer + 25);
+    g.lineBetween(cardX + cardW - chamfer, cardY, cardX + cardW - chamfer - 25, cardY);
+    g.lineBetween(cardX + cardW, cardY + chamfer, cardX + cardW, cardY + chamfer + 25);
+
+    // Divisores holográficos
+    g.lineStyle(1, 0x00f3ff, 0.35);
+    g.lineBetween(cardX + 25, cardY + 68, cardX + cardW - 25, cardY + 68);
+    g.lineBetween(cardX + 25, cardY + cardH - 52, cardX + cardW - 25, cardY + cardH - 52);
+  }
+
   public static renderFtuePrompt(
     g: Phaser.GameObjects.Graphics,
     cx: number,

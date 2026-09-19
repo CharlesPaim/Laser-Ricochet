@@ -3,6 +3,7 @@ import { TuningConfig } from './TuningConfig';
 import { AudioManager } from './AudioManager';
 import { PokiService } from './services/PokiService';
 import { t, toggleLang, getLang } from './i18n/translations';
+import { GAME_VERSION, GAME_BUILD_DATE, PATCH_NOTES } from './VersionConfig';
 import {
   ArenaRenderer,
   CoreRenderer,
@@ -290,6 +291,16 @@ export class GameScene extends Phaser.Scene {
   private helpTitleText!: Phaser.GameObjects.Text;
   private helpBodyText!: Phaser.GameObjects.Text;
   private helpCloseBtn!: Phaser.GameObjects.Text;
+
+  // Version & Patch Notes State
+  private versionBadgeText!: Phaser.GameObjects.Text;
+  private isPatchNotesOpen: boolean = false;
+  private patchNotesTitleText!: Phaser.GameObjects.Text;
+  private patchNotesSubtitleText!: Phaser.GameObjects.Text;
+  private patchNotesBodyText!: Phaser.GameObjects.Text;
+  private patchNotesCloseBtn!: Phaser.GameObjects.Text;
+  private patchNotesOpenedTime: number = 0;
+  private helpOpenedTime: number = 0;
 
   // Powerup state
   private activePowerup: PowerupType | null = null;
@@ -648,8 +659,23 @@ export class GameScene extends Phaser.Scene {
         this.updateMobileControlsVisibility();
       }
 
+      // Se clicou em botão de UI interativo (exceto o próprio botão de parry móvel), prioriza o botão
+      const hits = this.input.hitTestPointer(pointer);
+      const uiHits = hits ? hits.filter((h) => h !== this.parryBtnText) : [];
+      if (uiHits.length > 0) {
+        return;
+      }
+
+      if (this.isPatchNotesOpen) {
+        if (this.time.now - this.patchNotesOpenedTime > 150) {
+          this.togglePatchNotes(false);
+        }
+        return;
+      }
       if (this.isHelpOpen) {
-        this.toggleHelp(false);
+        if (this.time.now - this.helpOpenedTime > 150) {
+          this.toggleHelp(false);
+        }
         return;
       }
       if (this.isPaused) {
@@ -663,12 +689,6 @@ export class GameScene extends Phaser.Scene {
             return;
           }
         }
-        return;
-      }
-      // Se clicou em botão de UI interativo (exceto o próprio botão de parry móvel), prioriza o botão
-      const hits = this.input.hitTestPointer(pointer);
-      const uiHits = hits ? hits.filter((h) => h !== this.parryBtnText) : [];
-      if (uiHits.length > 0) {
         return;
       }
       if (!this.isRoundActive && this.restartAllowed) {
@@ -725,6 +745,10 @@ export class GameScene extends Phaser.Scene {
     this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE).on('down', () => {
       if (this.isShowingAd) return;
       this.audioManager.init();
+      if (this.isPatchNotesOpen) {
+        this.togglePatchNotes(false);
+        return;
+      }
       if (this.isHelpOpen) {
         this.toggleHelp(false);
         return;
@@ -781,7 +805,9 @@ export class GameScene extends Phaser.Scene {
 
     this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.ESC).on('down', () => {
       if (this.isShowingAd) return;
-      if (this.isHelpOpen) {
+      if (this.isPatchNotesOpen) {
+        this.togglePatchNotes(false);
+      } else if (this.isHelpOpen) {
         this.toggleHelp(false);
       } else if (this.isPaused) {
         this.resumeGame();
@@ -833,29 +859,57 @@ export class GameScene extends Phaser.Scene {
       color: '#00ffcc',
     }).setDepth(10).setVisible(false);
 
-    this.bannerText = this.add.text(TuningConfig.arena.centerX, 68, t('game_title'), {
+    this.bannerText = this.add.text(TuningConfig.arena.centerX, 56, t('game_title'), {
       fontFamily: "'Orbitron', monospace",
-      fontSize: '36px',
+      fontSize: '34px',
       fontStyle: 'bold',
       align: 'center',
       color: '#00f3ff',
     }).setOrigin(0.5).setVisible(true).setDepth(10);
 
-    this.subText = this.add.text(TuningConfig.arena.centerX, 108, t('game_subtitle'), {
+    this.subText = this.add.text(TuningConfig.arena.centerX, 90, t('game_subtitle'), {
       fontFamily: "'Rajdhani', sans-serif",
-      fontSize: '18px',
+      fontSize: '16px',
       fontStyle: 'bold',
       color: '#ffea00',
     }).setOrigin(0.5).setVisible(true).setDepth(10);
 
+    // Badge Diegético de Versão e Acesso aos Patch Notes
+    this.versionBadgeText = this.add.text(
+      TuningConfig.arena.centerX,
+      118,
+      t('btn_patch_notes', { version: GAME_VERSION }),
+      {
+        fontFamily: "'Orbitron', monospace",
+        fontSize: '11px',
+        fontStyle: 'bold',
+        color: '#00f3ff',
+        backgroundColor: '#0c253d',
+        padding: { x: 14, y: 4 },
+      }
+    ).setOrigin(0.5).setVisible(true).setInteractive({ useHandCursor: true }).setDepth(10);
+
+    this.versionBadgeText.on('pointerover', () => {
+      this.versionBadgeText.setColor('#ffea00').setBackgroundColor('#1c385c');
+    });
+    this.versionBadgeText.on('pointerout', () => {
+      this.versionBadgeText.setColor('#00f3ff').setBackgroundColor('#0c253d');
+    });
+    this.versionBadgeText.on('pointerdown', () => {
+      if (!this.isRoundActive && !this.isShowingAd) {
+        this.audioManager.init();
+        this.togglePatchNotes(!this.isPatchNotesOpen);
+      }
+    });
+
     // Hangar de Lâminas / Micro-Economia
     this.fragmentsTitleText = this.add.text(
       TuningConfig.arena.centerX,
-      148,
+      146,
       t('wallet_fragments', { count: this.plasmaFragments }),
       {
         fontFamily: "'Orbitron', monospace",
-        fontSize: '15px',
+        fontSize: '14px',
         fontStyle: 'bold',
         color: '#00f3ff',
       }
@@ -1257,6 +1311,51 @@ export class GameScene extends Phaser.Scene {
       this.toggleHelp(false);
     });
 
+    // Patch Notes Modal Overlay Elements
+    this.patchNotesTitleText = this.add.text(TuningConfig.arena.centerX, TuningConfig.arena.centerY - 150, t('patch_notes_title'), {
+      fontFamily: "'Orbitron', monospace",
+      fontSize: '22px',
+      fontStyle: 'bold',
+      color: '#00f3ff',
+      align: 'center',
+    }).setOrigin(0.5).setDepth(25).setVisible(false);
+
+    this.patchNotesSubtitleText = this.add.text(TuningConfig.arena.centerX, TuningConfig.arena.centerY - 120, `${GAME_VERSION} • BUILD ${GAME_BUILD_DATE} • LASER RICOCHET`, {
+      fontFamily: "'Rajdhani', sans-serif",
+      fontSize: '15px',
+      fontStyle: '600',
+      color: '#ffea00',
+      align: 'center',
+    }).setOrigin(0.5).setDepth(25).setVisible(false);
+
+    this.patchNotesBodyText = this.add.text(TuningConfig.arena.centerX, TuningConfig.arena.centerY - 98, '', {
+      fontFamily: "'Rajdhani', sans-serif",
+      fontSize: '13px',
+      fontStyle: '600',
+      color: '#b0e0ff',
+      align: 'left',
+      lineSpacing: 2,
+    }).setOrigin(0.5, 0).setDepth(25).setVisible(false);
+
+    this.patchNotesCloseBtn = this.add.text(TuningConfig.arena.centerX, TuningConfig.arena.centerY + 168, t('btn_close_patch_notes'), {
+      fontFamily: "'Orbitron', monospace",
+      fontSize: '13px',
+      fontStyle: 'bold',
+      color: '#00f3ff',
+      backgroundColor: '#0c253d',
+      padding: { x: 22, y: 7 },
+    }).setOrigin(0.5).setDepth(25).setVisible(false).setInteractive({ useHandCursor: true });
+
+    this.patchNotesCloseBtn.on('pointerover', () => {
+      this.patchNotesCloseBtn.setColor('#ffea00').setBackgroundColor('#1c385c');
+    });
+    this.patchNotesCloseBtn.on('pointerout', () => {
+      this.patchNotesCloseBtn.setColor('#00f3ff').setBackgroundColor('#0c253d');
+    });
+    this.patchNotesCloseBtn.on('pointerdown', () => {
+      this.togglePatchNotes(false);
+    });
+
     this.isRoundActive = false;
     this.restartAllowed = true;
     this.updateUI();
@@ -1276,17 +1375,67 @@ export class GameScene extends Phaser.Scene {
     this.helpBodyText.setVisible(open);
     this.helpCloseBtn.setVisible(open);
 
+    if (open) {
+      this.helpOpenedTime = this.time.now;
+      if (this.isPatchNotesOpen) {
+        this.togglePatchNotes(false);
+      }
+    }
+
     // If game has not started, hide title screen text underneath modal to avoid overlap
     if (!this.isRoundActive && this.coreHealth > 0) {
       this.bannerText.setVisible(!open);
       this.subText.setVisible(!open);
+      if (this.versionBadgeText) this.versionBadgeText.setVisible(!open);
       this.instructionText.setVisible(!open);
+      if (this.startButton) this.startButton.setVisible(!open);
       if (this.fragmentsTitleText) this.fragmentsTitleText.setVisible(!open);
       this.bladeButtons.forEach(b => b.setVisible(!open));
       if (this.bladeDescText) this.bladeDescText.setVisible(!open);
     }
 
     this.recordMetric(open ? 'help_opened' : 'help_closed');
+    this.render();
+  }
+
+  public togglePatchNotes(open: boolean): void {
+    this.isPatchNotesOpen = open;
+    this.patchNotesTitleText.setVisible(open);
+    this.patchNotesSubtitleText.setVisible(open);
+    this.patchNotesBodyText.setVisible(open);
+    this.patchNotesCloseBtn.setVisible(open);
+
+    if (open) {
+      this.patchNotesOpenedTime = this.time.now;
+      if (this.isHelpOpen) {
+        this.toggleHelp(false);
+      }
+      const curLang = getLang();
+      const lines: string[] = [];
+      PATCH_NOTES.slice(0, 3).forEach((entry, idx) => {
+        lines.push(`【 ${entry.version} — ${entry.codename} (${entry.date}) 】`);
+        const hl = entry.highlights[curLang] || entry.highlights.en;
+        const maxBullets = idx === 0 ? 4 : 2;
+        hl.slice(0, maxBullets).forEach((item) => {
+          lines.push(`  ▶ ${item}`);
+        });
+        if (idx < 2) lines.push('');
+      });
+      this.patchNotesBodyText.setText(lines);
+    }
+
+    if (!this.isRoundActive && this.coreHealth > 0) {
+      this.bannerText.setVisible(!open);
+      this.subText.setVisible(!open);
+      if (this.versionBadgeText) this.versionBadgeText.setVisible(!open);
+      this.instructionText.setVisible(!open);
+      if (this.startButton) this.startButton.setVisible(!open);
+      if (this.fragmentsTitleText) this.fragmentsTitleText.setVisible(!open);
+      this.bladeButtons.forEach(b => b.setVisible(!open));
+      if (this.bladeDescText) this.bladeDescText.setVisible(!open);
+    }
+
+    this.recordMetric(open ? 'patch_notes_opened' : 'patch_notes_closed');
     this.render();
   }
 
@@ -1340,6 +1489,19 @@ export class GameScene extends Phaser.Scene {
 
     this.updateFullscreenBtnText();
     if (this.parryBtnText) this.parryBtnText.setText(t('btn_parry_mobile'));
+
+    if (this.versionBadgeText) {
+      this.versionBadgeText.setText(t('btn_patch_notes', { version: GAME_VERSION }));
+    }
+    if (this.patchNotesTitleText) {
+      this.patchNotesTitleText.setText(t('patch_notes_title'));
+    }
+    if (this.patchNotesCloseBtn) {
+      this.patchNotesCloseBtn.setText(t('btn_close_patch_notes'));
+    }
+    if (this.isPatchNotesOpen) {
+      this.togglePatchNotes(true);
+    }
 
     this.updateHangarUI();
     this.updateUI();
@@ -1516,6 +1678,8 @@ export class GameScene extends Phaser.Scene {
     // Hide Start, Hangar & Game Over UI Elements
     this.bannerText.setVisible(false);
     this.subText.setVisible(false);
+    if (this.versionBadgeText) this.versionBadgeText.setVisible(false);
+    if (this.isPatchNotesOpen) this.togglePatchNotes(false);
     if (this.startButton) this.startButton.setVisible(false);
     this.instructionText.setVisible(false);
     this.hideHangarUI();
@@ -4000,10 +4164,12 @@ export class GameScene extends Phaser.Scene {
       g.strokeCircle(cx, cy, TuningConfig.cannons.distanceFromCenter - 25);
     }
 
-    // 12. Cartões de Vidro Fosco Táticos (Game Over / Pause / Start / Help / Mini-Rogue)
+    // 12. Cartões de Vidro Fosco Táticos (Game Over / Pause / Start / Help / Patch Notes / Mini-Rogue)
     if (this.isMiniRogueOpen) {
       const timeRatio = Math.max(0, this.miniRogueTimerMs / TuningConfig.miniRogue.autoSelectTimeoutMs);
       HudRenderer.renderMiniRogueCards(g, cx, cy, width, height, this.miniRogueCards, timeRatio);
+    } else if (this.isPatchNotesOpen) {
+      HudRenderer.renderPatchNotesCard(g, cx, cy, width, height);
     } else if (this.isHelpOpen) {
       HudRenderer.renderHelpCard(g, cx, cy, width, height);
     } else if (!this.isRoundActive && this.coreHealth <= 0) {
@@ -4015,7 +4181,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     // 13. Controles Táteis Mobile Dual-Thumb (Joystick Flutuante + Botão Neon de Parry)
-    const showMobileParry = this.isTouchDevice && this.isRoundActive && !this.isPaused && !this.isHelpOpen && !this.isMiniRogueOpen;
+    const showMobileParry = this.isTouchDevice && this.isRoundActive && !this.isPaused && !this.isHelpOpen && !this.isPatchNotesOpen && !this.isMiniRogueOpen;
     HudRenderer.renderMobileControls(
       g,
       this.isJoystickActive,
@@ -4151,12 +4317,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   private hideHangarUI(): void {
+    if (this.versionBadgeText) this.versionBadgeText.setVisible(false);
     if (this.fragmentsTitleText) this.fragmentsTitleText.setVisible(false);
     this.bladeButtons.forEach((b) => b.setVisible(false));
     if (this.bladeDescText) this.bladeDescText.setVisible(false);
   }
 
   private showHangarUI(): void {
+    if (this.versionBadgeText) this.versionBadgeText.setVisible(true);
     if (this.fragmentsTitleText) this.fragmentsTitleText.setVisible(true);
     this.bladeButtons.forEach((b) => b.setVisible(true));
     if (this.bladeDescText) this.bladeDescText.setVisible(true);
