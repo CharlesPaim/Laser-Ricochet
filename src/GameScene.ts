@@ -512,7 +512,7 @@ export class GameScene extends Phaser.Scene {
         }
       }
 
-      // 1. Mobile Dual-Thumb: Controle Direcional via Joystick Flutuante (Polegar Esquerdo)
+      // 1. Mobile Dual-Thumb: Controle Direcional e Distância Orbital via Joystick Flutuante (Polegar Esquerdo)
       if (p.id === this.joystickPointerId) {
         this.joystickCurrentX = p.x;
         this.joystickCurrentY = p.y;
@@ -523,15 +523,21 @@ export class GameScene extends Phaser.Scene {
         if (dist > 8) {
           const angle = Math.atan2(dy, dx);
           this.bladeAngle = angle + Math.PI / 2;
-          const orbitR = 125;
+
+          // Mapeamento dinâmico de distância radial: aproximar e afastar a lâmina
+          const minR = TuningConfig.blade.minOrbitRadius; // 65px
+          const maxR = TuningConfig.blade.maxOrbitRadius; // 160px
+          const normDist = Phaser.Math.Clamp((dist - 12) / 38, 0, 1);
+          const orbitR = minR + normDist * (maxR - minR);
+
           this.bladeX = cx + Math.cos(angle) * orbitR;
           this.bladeY = cy + Math.sin(angle) * orbitR;
         }
 
-        // Âncora flutuante segue suavemente o polegar se afastar muito
-        if (dist > 60) {
-          this.joystickOriginX = p.x - (dx / dist) * 60;
-          this.joystickOriginY = p.y - (dy / dist) * 60;
+        // Âncora flutuante segue suavemente o polegar se afastar muito (curso máximo 54px)
+        if (dist > 54) {
+          this.joystickOriginX = p.x - (dx / dist) * 54;
+          this.joystickOriginY = p.y - (dy / dist) * 54;
         }
       } else if (!p.wasTouch && !this.isTouchDevice) {
         // 2. Desktop: Rastreamento Polar 1:1 rigoroso com Mouse
@@ -1037,16 +1043,56 @@ export class GameScene extends Phaser.Scene {
       padding: { x: 10, y: 6 },
     }).setOrigin(0, 1).setDepth(15).setInteractive({ useHandCursor: true });
 
-    this.fullscreenBtn.on('pointerdown', () => {
+    this.fullscreenBtn.on('pointerdown', async () => {
       try {
-        if (this.scale.isFullscreen) {
-          this.scale.stopFullscreen();
+        const doc = document as any;
+        const docEl = document.documentElement as any;
+        const isFs = !!(
+          doc.fullscreenElement ||
+          doc.webkitFullscreenElement ||
+          doc.mozFullScreenElement ||
+          doc.msFullscreenElement ||
+          this.scale.isFullscreen
+        );
+
+        if (isFs) {
+          if (doc.exitFullscreen) {
+            await doc.exitFullscreen().catch(() => {});
+          } else if (doc.webkitExitFullscreen) {
+            doc.webkitExitFullscreen();
+          } else if (doc.mozCancelFullScreen) {
+            doc.mozCancelFullScreen();
+          } else if (doc.msExitFullscreen) {
+            doc.msExitFullscreen();
+          }
+          try { this.scale.stopFullscreen(); } catch (_) {}
         } else {
-          this.scale.startFullscreen();
+          const req =
+            docEl.requestFullscreen ||
+            docEl.webkitRequestFullscreen ||
+            docEl.webkitRequestFullScreen ||
+            docEl.mozRequestFullScreen ||
+            docEl.msRequestFullscreen;
+
+          if (req) {
+            await req.call(docEl).catch((err: any) => {
+              console.warn('[GameScene] document requestFullscreen failed, trying canvas scale:', err);
+              try { this.scale.startFullscreen(); } catch (_) {}
+            });
+          } else {
+            // iOS Safari (iPhone) não expõe API Fullscreen para DOM/canvas
+            window.scrollTo(0, 1);
+            this.showPopup(t('ios_fullscreen_hint'), '#00f3ff');
+          }
         }
       } catch (e) {
         console.warn('[GameScene] Fullscreen toggle error:', e);
       }
+      setTimeout(() => this.updateFullscreenBtnText(), 200);
+    });
+
+    ['fullscreenchange', 'webkitfullscreenchange', 'mozfullscreenchange', 'MSFullscreenChange'].forEach(evt => {
+      document.addEventListener(evt, () => this.updateFullscreenBtnText());
     });
 
     // Botão Tátil Arcade de Parry no Mobile (Polegar Direito)
@@ -1191,7 +1237,7 @@ export class GameScene extends Phaser.Scene {
     const isCrtOn = crtEl ? crtEl.style.display !== 'none' : true;
     if (this.crtBtn) this.crtBtn.setText(t(isCrtOn ? 'btn_crt_on' : 'btn_crt_off'));
 
-    if (this.fullscreenBtn) this.fullscreenBtn.setText(t('btn_fullscreen'));
+    this.updateFullscreenBtnText();
     if (this.parryBtnText) this.parryBtnText.setText(t('btn_parry_mobile'));
 
     this.updateHangarUI();
@@ -1199,6 +1245,20 @@ export class GameScene extends Phaser.Scene {
     this.updateQuestUI();
     this.updateMobileControlsVisibility();
     this.render();
+  }
+
+  public updateFullscreenBtnText(): void {
+    if (this.fullscreenBtn) {
+      const doc = document as any;
+      const isFs = !!(
+        doc.fullscreenElement ||
+        doc.webkitFullscreenElement ||
+        doc.mozFullScreenElement ||
+        doc.msFullscreenElement ||
+        this.scale.isFullscreen
+      );
+      this.fullscreenBtn.setText(t(isFs ? 'btn_fullscreen_exit' : 'btn_fullscreen'));
+    }
   }
 
   public updateMobileControlsVisibility(): void {

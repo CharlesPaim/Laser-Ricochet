@@ -412,11 +412,19 @@ export class HudRenderer {
   ): void {
     // 1. Virtual Joystick flutuante no polegar esquerdo
     if (isJoystickActive) {
-      // Anel de base translúcido
+      // Anel de base translúcido (limite de curso máximo: órbita externa 160px)
       g.lineStyle(2, 0x00f3ff, 0.5);
       g.strokeCircle(joyOriginX, joyOriginY, 52);
       g.fillStyle(0x0c1626, 0.4);
       g.fillCircle(joyOriginX, joyOriginY, 52);
+
+      // Anel tático interno (guia de aproximação do núcleo: minOrbitRadius 65px)
+      g.lineStyle(1, 0x00f3ff, 0.22);
+      g.strokeCircle(joyOriginX, joyOriginY, 20);
+
+      // Anel tático intermediário (órbita média de equilíbrio ~112px)
+      g.lineStyle(1, 0x00f3ff, 0.15);
+      g.strokeCircle(joyOriginX, joyOriginY, 36);
 
       // Linha de tensão entre a base e o polegar
       g.lineStyle(2, 0x00f3ff, 0.35);
