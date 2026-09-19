@@ -67,6 +67,41 @@ interface LaserOrb {
   sineAngle?: number;
   sineSpeed?: number;
   sourceCannonId: number;
+  rally?: number;
+  rallyLock?: number;
+  fromNemesis?: boolean;
+}
+
+export type NemesisState = 'stalk' | 'dash' | 'strike' | 'recover';
+
+export interface NemesisEntity {
+  active: boolean;
+  angle: number;
+  radius: number;
+  x: number;
+  y: number;
+  bladeAngle: number;
+  hp: number;
+  maxHp: number;
+  tier: number;
+  hitFlash: number;
+  spawnT: number;
+  state: NemesisState;
+  stateUntil: number;
+  targetAngle: number;
+  targetRadius: number;
+  dashFrom: number;
+  dashTo: number;
+  dashRadiusFrom: number;
+  dashRadiusTo: number;
+  nextFireTime: number;
+  parryFlash: number;
+  ghostX: number[];
+  ghostY: number[];
+  ghostA: number[];
+  ghostLen: number;
+  ghostTick: number;
+  rageTier: number;
 }
 
 interface PowerUpItem {
@@ -173,6 +208,45 @@ export class GameScene extends Phaser.Scene {
   private powerups: PowerUpItem[] = [];
   private sparks: Spark[] = [];
   private deflectVectors: DeflectVector[] = [];
+
+  // SHADOW DEFLECTOR (Nemesis Duel — Waves 10, 20, 30...) LRN-054
+  private nemesis: NemesisEntity = GameScene.blankNemesis();
+  private bestRallyRun: number = 0;
+
+  public static blankNemesis(): NemesisEntity {
+    const cx = TuningConfig.arena.centerX;
+    const cy = TuningConfig.arena.centerY;
+    const rMax = TuningConfig.nemesis.orbitMax;
+    return {
+      active: false,
+      angle: -Math.PI / 2,
+      radius: rMax,
+      x: cx,
+      y: cy - rMax,
+      bladeAngle: 0,
+      hp: 8,
+      maxHp: 8,
+      tier: 1,
+      hitFlash: 0,
+      spawnT: 0,
+      state: 'stalk',
+      stateUntil: 0,
+      targetAngle: 0,
+      targetRadius: rMax,
+      dashFrom: 0,
+      dashTo: 0,
+      dashRadiusFrom: rMax,
+      dashRadiusTo: rMax,
+      nextFireTime: 0,
+      parryFlash: 0,
+      ghostX: new Array(6).fill(0),
+      ghostY: new Array(6).fill(0),
+      ghostA: new Array(6).fill(0),
+      ghostLen: 0,
+      ghostTick: 0,
+      rageTier: 0,
+    };
+  }
 
   private coreHealth: number = TuningConfig.arena.coreMaxHealth;
   private currentWave: number = 1;
@@ -1403,6 +1477,8 @@ export class GameScene extends Phaser.Scene {
     this.restartAllowed = false;
     this.duelBannerTimerMs = 0;
     this.isPaused = false;
+    this.nemesis = GameScene.blankNemesis();
+    this.bestRallyRun = 0;
 
     // Reset FTUE & Boss Tracking
     this.hasMovedBlade = false;
@@ -1537,9 +1613,21 @@ export class GameScene extends Phaser.Scene {
       archetypeList.push({ type: 'standard', hp: 1, color: TuningConfig.cannons.colorStandard, radius: TuningConfig.cannons.radius });
       archetypeList.push({ type: 'standard', hp: 1, color: TuningConfig.cannons.colorStandard, radius: TuningConfig.cannons.radius });
       this.showPopup(t('hud_sniper_lock'), '#00ccff');
-    } else if (waveNumber % TuningConfig.boss.bossIntervalWaves === 0) {
-      // Boss Battle every 5 waves (Wave 5, 10, 15, 20...) with progressive scaling!
-      const bossTier = Math.floor(waveNumber / TuningConfig.boss.bossIntervalWaves);
+    } else if (waveNumber % 10 === 0) {
+      // SHADOW DEFLECTOR (Nemesis Duel — Wave 10, 20, 30...) LRN-054
+      const nemesisTier = Math.max(1, Math.round(waveNumber / 10));
+      this.spawnNemesis(waveNumber);
+      baseOrbit = TuningConfig.waves.orbitSpeedBase * 0.8;
+      // High tiers add tactical escort wingmen
+      if (nemesisTier >= 2) {
+        archetypeList.push({ type: 'sniper', hp: 1, color: TuningConfig.cannons.colorSniper, radius: TuningConfig.cannons.radius });
+      }
+      if (nemesisTier >= 3) {
+        archetypeList.push({ type: 'scatter', hp: 1, color: TuningConfig.cannons.colorScatter, radius: TuningConfig.cannons.radius });
+      }
+    } else if (waveNumber % 5 === 0) {
+      // DREADNOUGHT (Orbital Fortress Boss — Wave 5, 15, 25...)
+      const bossTier = Math.floor(waveNumber / 5);
       const bossHp = 6 + (bossTier - 1) * TuningConfig.boss.hpPerTier;
       const bossShield = TuningConfig.boss.shieldMaxHp + Math.floor((bossTier - 1) * TuningConfig.boss.shieldPipsPerTier);
 
@@ -1640,6 +1728,407 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.updateUI();
+  }
+
+  // =========================================================================
+  // SHADOW DEFLECTOR (Nemesis Duel & Deadly Rally Mechanics — LRN-054)
+  // =========================================================================
+
+  private spawnNemesis(wave: number): void {
+    const tier = Math.max(1, Math.round(wave / 10));
+    const n = this.nemesis;
+    Object.assign(n, GameScene.blankNemesis());
+    n.active = true;
+    n.tier = tier;
+    n.maxHp = 5 + (tier - 1) * 3;
+    n.hp = n.maxHp;
+
+    const cx = TuningConfig.arena.centerX;
+    const cy = TuningConfig.arena.centerY;
+    const rMax = TuningConfig.nemesis.orbitMax;
+
+    // Spawns diametrically opposite player's blade
+    n.angle = this.bladeAngle + Math.PI;
+    n.radius = rMax;
+    n.targetAngle = n.angle;
+    n.targetRadius = rMax;
+    n.x = cx + Math.cos(n.angle) * n.radius;
+    n.y = cy + Math.sin(n.angle) * n.radius;
+    n.bladeAngle = n.angle + Math.PI / 2;
+    n.state = 'stalk';
+    const now = performance.now();
+    n.stateUntil = now + 1400; // Duel reading grace window
+    n.nextFireTime = now + 2000;
+
+    this.audioManager.nemesisSpawn();
+    this.audioManager.setBgmMode('boss');
+    this.cameras.main.flash(120, 255, 30, 60);
+    this.cameras.main.shake(320, 0.014);
+
+    this.shockwaves.push({
+      x: n.x,
+      y: n.y,
+      currentRadius: 10,
+      maxRadius: 140,
+      color: 0xff1744,
+      life: 0.4,
+      maxLife: 0.4,
+    });
+
+    this.showPopup(
+      getLang() === 'en'
+        ? `⚔ SHADOW DEFLECTOR TIER ${tier}!\n[DEADLY RALLY: WIN 3X EXCHANGES TO BREAK ITS GUARD]`
+        : `⚔ SHADOW DEFLECTOR TIER ${tier}!\n[DEADLY RALLY: REBATA 3X PARA QUEBRAR A GUARDA]`,
+      '#ff1744'
+    );
+    this.recordMetric('nemesis_spawned', { wave, tier, hp: n.maxHp });
+  }
+
+  private nemesisEnds(): { ax: number; ay: number; bx: number; by: number } {
+    const n = this.nemesis;
+    const half = TuningConfig.nemesis.bladeHalf;
+    const hx = Math.cos(n.bladeAngle) * half;
+    const hy = Math.sin(n.bladeAngle) * half;
+    return { ax: n.x - hx, ay: n.y - hy, bx: n.x + hx, by: n.y + hy };
+  }
+
+  private updateNemesis(now: number, dt: number): void {
+    const n = this.nemesis;
+    if (!n.active) return;
+    const cx = TuningConfig.arena.centerX;
+    const cy = TuningConfig.arena.centerY;
+
+    n.spawnT = Math.min(1, n.spawnT + dt * 1.4);
+    if (n.hitFlash > 0) n.hitFlash = Math.max(0, n.hitFlash - dt * 3.5);
+    if (n.parryFlash > 0) n.parryFlash = Math.max(0, n.parryFlash - dt * 4);
+
+    const aggression = 1 + (n.tier - 1) * 0.22 + (1 - n.hp / n.maxHp) * 0.45;
+
+    switch (n.state) {
+      case 'stalk': {
+        const toPlayer = Phaser.Math.Angle.Wrap(this.bladeAngle - n.angle);
+        const flankSide = toPlayer >= 0 ? 1 : -1;
+        const desired = this.bladeAngle - flankSide * (0.85 + Math.random() * 0.3);
+        const delta = Phaser.Math.Angle.Wrap(desired - n.angle);
+        n.angle += Math.sign(delta) * Math.min(Math.abs(delta), TuningConfig.nemesis.stalkSpeed * aggression * dt);
+
+        n.radius += Math.sin(now * 0.0021) * 26 * dt;
+        n.radius = Phaser.Math.Clamp(n.radius, TuningConfig.nemesis.orbitMin, TuningConfig.nemesis.orbitMax);
+        if (now >= n.stateUntil) {
+          this.nemesisEnterDash(now);
+        }
+        break;
+      }
+      case 'dash': {
+        const k = 1 - Math.max(0, (n.stateUntil - now) / TuningConfig.nemesis.dashMs);
+        const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2; // easeInOutQuad
+        n.angle = n.dashFrom + Phaser.Math.Angle.Wrap(n.dashTo - n.dashFrom) * e;
+        n.radius = n.dashRadiusFrom + (n.dashRadiusTo - n.dashRadiusFrom) * e;
+
+        n.ghostTick += dt;
+        if (n.ghostTick > 0.028) {
+          n.ghostTick = 0;
+          for (let i = Math.min(n.ghostLen, 4); i > 0; i--) {
+            n.ghostX[i] = n.ghostX[i - 1];
+            n.ghostY[i] = n.ghostY[i - 1];
+            n.ghostA[i] = n.ghostA[i - 1];
+          }
+          n.ghostX[0] = n.x;
+          n.ghostY[0] = n.y;
+          n.ghostA[0] = n.bladeAngle;
+          if (n.ghostLen < 5) n.ghostLen++;
+        }
+
+        if (now >= n.stateUntil) {
+          n.state = 'strike';
+          n.stateUntil = now + TuningConfig.nemesis.strikeMs / aggression;
+        }
+        break;
+      }
+      case 'strike': {
+        if (now >= n.stateUntil) {
+          if (!this.rallyInFlight() && now >= n.nextFireTime) {
+            this.nemesisFire(now);
+            n.nextFireTime = now + (1500 + Math.random() * 900) / aggression;
+          }
+          n.state = 'stalk';
+          const stalkMin = TuningConfig.nemesis.stalkMin;
+          const stalkMax = TuningConfig.nemesis.stalkMax;
+          n.stateUntil = now + (stalkMin + Math.random() * (stalkMax - stalkMin)) / aggression;
+          n.ghostLen = 0;
+        }
+        break;
+      }
+      case 'recover': {
+        n.angle += 0.35 * dt;
+        if (now >= n.stateUntil) {
+          n.state = 'stalk';
+          n.stateUntil = now + 450;
+        }
+        break;
+      }
+    }
+
+    n.x = cx + Math.cos(n.angle) * n.radius;
+    n.y = cy + Math.sin(n.angle) * n.radius;
+
+    const threat = this.nearestRallyBolt(n.x, n.y);
+    if (threat) {
+      n.bladeAngle = Math.atan2(threat.y - n.y, threat.x - n.x) + Math.PI / 2;
+    } else {
+      n.bladeAngle = n.angle + Math.PI / 2;
+    }
+  }
+
+  private nemesisEnterDash(now: number): void {
+    const n = this.nemesis;
+    const side = Math.random() < 0.5 ? 1 : -1;
+    n.dashFrom = n.angle;
+    n.dashTo = this.bladeAngle + side * (1.5 + Math.random() * 1.3);
+    n.dashRadiusFrom = n.radius;
+    const rMin = TuningConfig.nemesis.orbitMin;
+    const rMax = TuningConfig.nemesis.orbitMax;
+    n.dashRadiusTo = rMin + Math.random() * (rMax - rMin);
+    n.state = 'dash';
+    n.stateUntil = now + TuningConfig.nemesis.dashMs;
+    n.ghostLen = 0;
+    this.audioManager.nemesisDash();
+  }
+
+  private nemesisFire(now: number): void {
+    const n = this.nemesis;
+    const cx = TuningConfig.arena.centerX;
+    const cy = TuningConfig.arena.centerY;
+    const a = Math.atan2(cy - n.y, cx - n.x) + (Math.random() - 0.5) * 0.18;
+    const sp = 230 + n.tier * 22;
+    this.lasers.push({
+      x: n.x + Math.cos(a) * 30,
+      y: n.y + Math.sin(a) * 30,
+      vx: Math.cos(a) * sp,
+      vy: Math.sin(a) * sp,
+      radius: 8,
+      isReflected: false,
+      isOverloadShard: false,
+      sourceCannonId: -99,
+      rally: 0,
+      rallyLock: 2,
+      fromNemesis: true,
+    });
+    this.audioManager.playSniperShot();
+    this.spawnSparks(n.x + Math.cos(a) * 30, n.y + Math.sin(a) * 30, 0xff8fa3, 10);
+  }
+
+  private nemesisReturn(laser: LaserOrb, t: number, now: number): void {
+    const n = this.nemesis;
+    const cx = TuningConfig.arena.centerX;
+    const cy = TuningConfig.arena.centerY;
+
+    let nx = Math.cos(n.angle);
+    let ny = Math.sin(n.angle);
+    if (laser.vx * nx + laser.vy * ny > 0) {
+      nx = -nx;
+      ny = -ny;
+    }
+    const d2 = laser.vx * nx + laser.vy * ny;
+    let rx = laser.vx - 2 * d2 * nx;
+    let ry = laser.vy - 2 * d2 * ny;
+
+    const s = t * 2 - 1;
+    const slice = s * 0.55;
+    const cs = Math.cos(slice);
+    const sn = Math.sin(slice);
+    const tmp = rx * cs - ry * sn;
+    ry = rx * sn + ry * cs;
+    rx = tmp;
+
+    const toCore = Math.atan2(cy - n.y, cx - n.x) + s * 0.34;
+    const blend = 0.55;
+    let ux = Math.cos(Math.atan2(ry, rx)) * (1 - blend) + Math.cos(toCore) * blend;
+    let uy = Math.sin(Math.atan2(ry, rx)) * (1 - blend) + Math.sin(toCore) * blend;
+    const ul = Math.hypot(ux, uy) || 1;
+    ux /= ul;
+    uy /= ul;
+
+    const tier = (laser.rally || 0) + 1;
+    const currentSpeed = Math.hypot(laser.vx, laser.vy) || 300;
+    const speed = Math.min(
+      TuningConfig.nemesis.rallyMaxSpeed,
+      Math.max(300, currentSpeed) * TuningConfig.nemesis.rallySpeedStep
+    );
+
+    laser.isReflected = false;
+    laser.rally = tier;
+    laser.rallyLock = 2;
+    laser.fromNemesis = true;
+    laser.radius = Math.min(16, laser.radius * TuningConfig.nemesis.rallyRadiusStep);
+    laser.vx = ux * speed;
+    laser.vy = uy * speed;
+    laser.x = n.x + ux * 26;
+    laser.y = n.y + uy * 26;
+
+    n.parryFlash = 1;
+    n.rageTier = Math.max(n.rageTier, tier);
+    this.onRallyExchange(tier, laser.x, laser.y, false);
+  }
+
+  private onRallyExchange(tier: number, x: number, y: number, byPlayer: boolean): void {
+    this.bestRallyRun = Math.max(this.bestRallyRun, tier);
+    this.audioManager.rallyClash(tier, byPlayer);
+
+    const colors = TuningConfig.nemesis.rallyColors;
+    const col = colors[Math.min(tier, colors.length - 1)];
+
+    this.shockwaves.push({
+      x,
+      y,
+      currentRadius: 12,
+      maxRadius: 44 + tier * 9,
+      color: col,
+      life: 0.26,
+      maxLife: 0.26,
+    });
+    this.spawnSparks(x, y, col, 6 + Math.min(12, tier * 2));
+
+    this.hitstopTimerMs = Math.max(this.hitstopTimerMs, Math.min(70, 16 + tier * 7));
+    this.cameras.main.shake(70 + tier * 12, Math.min(0.012, 0.002 + tier * 0.0012));
+
+    if (tier === TuningConfig.nemesis.rallyLethalTier) {
+      this.showPopup(
+        getLang() === 'en'
+          ? '⚡ LETHAL CHARGE! THIS BOLT CAN BREAK THE GUARD!'
+          : '⚡ CARGA LETAL! ESTE DISPARO QUEBRA A GUARDA!',
+        '#ffea00'
+      );
+      this.spawnFloatingScore(x, y - 28, '⚡ LETHAL CHARGE!', '#ffea00');
+    } else if (tier > TuningConfig.nemesis.rallyLethalTier && tier % 2 === 1) {
+      this.showPopup(`⚔ RALLY ×${tier}!`, '#ffaa00');
+      this.spawnFloatingScore(x, y - 25, `RALLY ×${tier}`, '#ffaa00');
+    }
+  }
+
+  private hitNemesis(laser: LaserOrb, now: number): void {
+    const n = this.nemesis;
+    const lethal = (laser.rally || 0) >= TuningConfig.nemesis.rallyLethalTier;
+    if (!lethal) {
+      laser.vx = -laser.vx * 0.5;
+      laser.vy = -laser.vy * 0.5;
+      laser.rallyLock = 2;
+      this.spawnSparks(laser.x, laser.y, 0x8899aa, 10);
+      this.audioManager.playShieldRicochet();
+      this.spawnFloatingScore(n.x, n.y - 34, 'GUARDED', '#8899aa');
+      return;
+    }
+
+    const idx = this.lasers.indexOf(laser);
+    if (idx !== -1) this.lasers.splice(idx, 1);
+
+    const dmg = 1 + Math.floor(((laser.rally || 3) - 3) / 2);
+    n.hp -= dmg;
+    n.hitFlash = 1;
+    n.state = 'recover';
+    n.stateUntil = now + TuningConfig.nemesis.recoverMs;
+    n.ghostLen = 0;
+
+    this.audioManager.rallyBreak();
+    this.cameras.main.shake(260, 0.014);
+    this.cameras.main.flash(90, 255, 220, 120);
+
+    this.shockwaves.push({
+      x: n.x,
+      y: n.y,
+      currentRadius: 15,
+      maxRadius: 130,
+      color: 0xffea00,
+      life: 0.35,
+      maxLife: 0.35,
+    });
+    this.spawnSparks(n.x, n.y, 0xffea00, 24);
+
+    const pts = 250 * (laser.rally || 3);
+    this.score += pts;
+    this.spawnFloatingScore(n.x, n.y - 40, `💥 GUARD BREAK −${dmg}`, '#ffea00');
+
+    if (n.hp <= 0) {
+      this.killNemesis(now);
+    }
+  }
+
+  private killNemesis(now: number): void {
+    const n = this.nemesis;
+    n.active = false;
+    this.bossesDefeatedCount++;
+    const pts = 1500 * n.tier;
+    this.score += pts;
+    this.spawnFloatingScore(n.x, n.y - 40, `+${pts}`, '#ff1744');
+
+    this.spawnFlyingFragment(n.x, n.y, 80, 0xff1744);
+
+    this.shockwaves.push({
+      x: n.x,
+      y: n.y,
+      currentRadius: 20,
+      maxRadius: 180,
+      color: 0xff1744,
+      life: 0.5,
+      maxLife: 0.5,
+    });
+    this.shockwaves.push({
+      x: n.x,
+      y: n.y,
+      currentRadius: 10,
+      maxRadius: 120,
+      color: 0xffea00,
+      life: 0.35,
+      maxLife: 0.35,
+    });
+    this.spawnSparks(n.x, n.y, 0xff1744, 36);
+
+    this.cameras.main.shake(460, 0.018);
+    this.cameras.main.flash(110, 255, 60, 90);
+
+    this.audioManager.nemesisDown();
+    this.audioManager.setBgmMode('regular');
+
+    this.showPopup(
+      getLang() === 'en'
+        ? `⚔ SHADOW DEFLECTOR DOWN!\n[DUEL WON • BEST RALLY ×${this.bestRallyRun}]`
+        : `⚔ SHADOW DEFLECTOR DESTRUÍDO!\n[DUELO VENCIDO • MELHOR RALLY ×${this.bestRallyRun}]`,
+      '#ffea00'
+    );
+
+    const remaining = this.cannons.filter(c => !c.isDestroyed).length;
+    if (remaining === 0 && !this.waveTransitioning) {
+      this.handleWaveClear();
+    }
+  }
+
+  private rallyInFlight(): boolean {
+    for (const l of this.lasers) {
+      if (l.rally && l.rally > 0) return true;
+    }
+    return false;
+  }
+
+  public currentRallyTier(): number {
+    let t = 0;
+    for (const l of this.lasers) {
+      if (l.rally && l.rally > t) t = l.rally;
+    }
+    return t;
+  }
+
+  private nearestRallyBolt(x: number, y: number): LaserOrb | null {
+    let best: LaserOrb | null = null;
+    let bd = 260 * 260;
+    for (const l of this.lasers) {
+      if (!l.isReflected) continue;
+      const d = (l.x - x) ** 2 + (l.y - y) ** 2;
+      if (d < bd) {
+        bd = d;
+        best = l;
+      }
+    }
+    return best;
   }
 
   private updateUI(): void {
@@ -2084,7 +2573,11 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (this.isRoundActive) {
-      this.updateCannons(performance.now(), dt);
+      const nowMs = performance.now();
+      this.updateCannons(nowMs, dt);
+      if (this.nemesis.active) {
+        this.updateNemesis(nowMs, dt);
+      }
       this.updateLasers(dt);
       this.updatePowerups(dt);
       this.checkCollisions();
@@ -2816,7 +3309,16 @@ export class GameScene extends Phaser.Scene {
 
             // Subtle magnetic homing assist with smooth angular difference wrap
             const bestCannon = this.findNearestAliveCannon(laser.x, laser.y);
-            if (bestCannon) {
+            if (this.nemesis.active && (laser.fromNemesis || (laser.rally !== undefined && laser.rally > 0) || !bestCannon)) {
+              const toNemesis = Math.atan2(this.nemesis.y - laser.y, this.nemesis.x - laser.x);
+              const curA = Math.atan2(ry, rx);
+              let diff = toNemesis - curA;
+              diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+              const newA = curA + diff * (TuningConfig.blade.homingAssistance * 1.5);
+              const mag = Math.hypot(rx, ry);
+              rx = Math.cos(newA) * mag;
+              ry = Math.sin(newA) * mag;
+            } else if (bestCannon) {
               const toTargetAngle = Math.atan2(bestCannon.y - laser.y, bestCannon.x - laser.x);
               const currentAngle = Math.atan2(ry, rx);
               let angleDiff = toTargetAngle - currentAngle;
@@ -2828,11 +3330,23 @@ export class GameScene extends Phaser.Scene {
             }
 
             const currentSpeed = Math.hypot(rx, ry) || 1;
-            const targetSpeed = Math.min(
-              TuningConfig.laser.maxSpeed,
-              (TuningConfig.laser.initialSpeed + (this.currentWave - 1) * 8) *
-                (isParry ? 1.8 : TuningConfig.blade.deflectBoostMultiplier)
-            );
+            const isRallyBolt = this.nemesis.active && (laser.fromNemesis || (laser.rally !== undefined && laser.rally > 0));
+            let targetSpeed: number;
+            if (isRallyBolt) {
+              laser.rally = (laser.rally || 0) + 1;
+              laser.rallyLock = 2;
+              targetSpeed = Math.min(
+                TuningConfig.nemesis.rallyMaxSpeed,
+                Math.max(300, currentSpeed) * TuningConfig.nemesis.rallySpeedStep
+              );
+              this.onRallyExchange(laser.rally, laser.x, laser.y, true);
+            } else {
+              targetSpeed = Math.min(
+                TuningConfig.laser.maxSpeed,
+                (TuningConfig.laser.initialSpeed + (this.currentWave - 1) * 8) *
+                  (isParry ? 1.8 : TuningConfig.blade.deflectBoostMultiplier)
+              );
+            }
             laser.vx = (rx / currentSpeed) * targetSpeed;
             laser.vy = (ry / currentSpeed) * targetSpeed;
 
@@ -2919,7 +3433,37 @@ export class GameScene extends Phaser.Scene {
         }
       }
 
-      // 3. Reflected Laser Collision with Cannons
+      // 3. Collision with Shadow Deflector (Nemesis Blade & Hull) — LRN-054
+      if (laser.isReflected && this.nemesis.active) {
+        if (laser.rallyLock && laser.rallyLock > 0) {
+          laser.rallyLock--;
+        } else {
+          // Check collision with Nemesis Scythe Blade (if not in recover state)
+          if (this.nemesis.state !== 'recover') {
+            const ends = this.nemesisEnds();
+            const dBlade = this.distPointToSegment(laser.x, laser.y, ends.ax, ends.ay, ends.bx, ends.by);
+            if (dBlade <= laser.radius + TuningConfig.nemesis.bladeThickness / 2 + 8) {
+              const segLen = Math.hypot(ends.bx - ends.ax, ends.by - ends.ay) || 1;
+              const t = Phaser.Math.Clamp(
+                ((laser.x - ends.ax) * (ends.bx - ends.ax) + (laser.y - ends.ay) * (ends.by - ends.ay)) / (segLen * segLen),
+                0,
+                1
+              );
+              this.nemesisReturn(laser, t, performance.now());
+              continue;
+            }
+          }
+
+          // Check collision with Nemesis Chassis Hull
+          const distToNemesis = Math.hypot(laser.x - this.nemesis.x, laser.y - this.nemesis.y);
+          if (distToNemesis <= laser.radius + 28) {
+            this.hitNemesis(laser, performance.now());
+            continue;
+          }
+        }
+      }
+
+      // 4. Reflected Laser Collision with Cannons
       if (laser.isReflected) {
         for (const cannon of this.cannons) {
           if (cannon.isDestroyed) continue;
@@ -3045,7 +3589,7 @@ export class GameScene extends Phaser.Scene {
             this.updateUI();
 
             const remaining = this.cannons.filter(c => !c.isDestroyed).length;
-            if (remaining === 0 && !this.waveTransitioning) {
+            if (remaining === 0 && !this.nemesis.active && !this.waveTransitioning) {
               this.handleWaveClear();
               return;
             }
@@ -3376,6 +3920,16 @@ export class GameScene extends Phaser.Scene {
 
     // 7. Naves de Combate Inimigas por Silhueta Militar
     CannonRenderer.render(g, this.cannons, cx, cy, now);
+
+    // 7.1 Shadow Deflector (Nemesis Duel) & Rally Link Telemetry (LRN-054)
+    if (this.nemesis.active) {
+      CannonRenderer.renderNemesis(g, this.nemesis, cx, cy, now * 0.001);
+      const activeRallyTier = this.currentRallyTier();
+      if (activeRallyTier > 0) {
+        CannonRenderer.drawRallyLink(g, this.bladeX, this.bladeY, this.nemesis.x, this.nemesis.y, activeRallyTier, now * 0.001);
+        HudRenderer.renderRallyGauge(g, activeRallyTier, cx, cy, now);
+      }
+    }
 
     // 8. Centelhas e Micro-Vetores de Deflexão
     EffectsRenderer.renderSparks(g, this.sparks);

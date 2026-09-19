@@ -498,5 +498,60 @@ export class HudRenderer {
       g.strokeCircle(parryBtnX, parryBtnY, r - 7);
     }
   }
+
+  /**
+   * Renderiza a telemetria do Deadly Rally durante o duelo contra o Shadow Deflector (LRN-054)
+   * Exibe o nível do rally, multiplicador e alerta pulsante de CARGA LETAL (Tier >= 3).
+   */
+  public static renderRallyGauge(
+    g: Phaser.GameObjects.Graphics,
+    rallyTier: number,
+    cx: number,
+    cy: number,
+    now: number
+  ): void {
+    if (rallyTier <= 0) return;
+
+    const lethal = rallyTier >= TuningConfig.nemesis.rallyLethalTier;
+    const colors = TuningConfig.nemesis.rallyColors;
+    const color = colors[Math.min(rallyTier, colors.length - 1)];
+    const pulse = Math.sin(now * 0.015);
+
+    // Barra de progresso centrada abaixo do placar superior
+    const y = 46;
+    const w = 170;
+    const h = 14;
+    const x = cx - w / 2;
+
+    // Fundo cyber-card
+    g.fillStyle(0x060c18, 0.88);
+    g.fillRect(x, y, w, h);
+    g.lineStyle(1.5, color, lethal ? 0.95 + 0.05 * pulse : 0.7);
+    g.strokeRect(x, y, w, h);
+
+    // Rally Ticks (8 pips estáticos de progresso)
+    const pips = Math.min(8, rallyTier);
+    const pipW = (w - 10) / 8;
+    for (let i = 0; i < 8; i++) {
+      const px = x + 5 + i * pipW;
+      if (i < pips) {
+        g.fillStyle(color, 0.95);
+        g.fillRect(px + 1, y + 2.5, pipW - 2, h - 5);
+        if (lethal) {
+          g.fillStyle(0xffffff, 0.6 + 0.4 * pulse);
+          g.fillRect(px + 2, y + 3.5, pipW - 4, (h - 7) * 0.5);
+        }
+      } else {
+        g.fillStyle(0x131f33, 0.5);
+        g.fillRect(px + 1, y + 2.5, pipW - 2, h - 5);
+      }
+    }
+
+    // Alerta de Guarda Quebrável quando letal
+    if (lethal) {
+      g.lineStyle(2, 0xffea00, 0.75 + 0.25 * pulse);
+      g.strokeRect(x - 2, y - 2, w + 4, h + 4);
+    }
+  }
 }
 

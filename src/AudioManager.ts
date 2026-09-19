@@ -1011,4 +1011,120 @@ export class AudioManager {
     this.humGain = null;
     this.isHumPlaying = false;
   }
+
+  // =========================================================================
+  // Shadow Deflector (Nemesis) & Deadly Rally Procedural Synthesizers (LRN-054)
+  // =========================================================================
+
+  private tone(freq: number, duration: number, type: OscillatorType = 'sine', gainVal: number = 0.2, delay: number = 0, endFreq?: number): void {
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime + delay;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, now);
+      if (endFreq !== undefined && endFreq > 0) {
+        osc.frequency.exponentialRampToValueAtTime(Math.max(1, endFreq), now + duration);
+      }
+      const peak = TuningConfig.audio.masterVolume * gainVal;
+      gain.gain.setValueAtTime(peak, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+      osc.connect(gain);
+      gain.connect(this.getMasterOutput());
+      osc.start(now);
+      osc.stop(now + duration);
+    } catch {}
+  }
+
+  private noise(duration: number, gainVal: number = 0.1, filterFreq: number = 1000, delay: number = 0, q: number = 1, filterType: BiquadFilterType = 'bandpass'): void {
+    this.init();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime + delay;
+      const bufferSize = Math.max(1, Math.floor(this.ctx.sampleRate * duration));
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+      const noiseSrc = this.ctx.createBufferSource();
+      noiseSrc.buffer = buffer;
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = filterType;
+      filter.frequency.setValueAtTime(filterFreq, now);
+      filter.Q.setValueAtTime(q, now);
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(TuningConfig.audio.masterVolume * gainVal, now);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+      noiseSrc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.getMasterOutput());
+
+      noiseSrc.start(now);
+      noiseSrc.stop(now + duration);
+    } catch {}
+  }
+
+  /** Nemesis entrance fanfare: deep sub swell + inverted duel fanfare (LRN-054) */
+  public nemesisSpawn(): void {
+    this.tone(48, 1.6, 'sine', 0.35, 0, 30);
+    this.tone(82, 1.2, 'sawtooth', 0.22, 0.05, 55);
+    for (let i = 0; i < 3; i++) {
+      this.tone(311.13 * Math.pow(0.84, i), 0.5, 'square', 0.12, 0.25 + i * 0.16, 155);
+    }
+    this.noise(1.3, 0.15, 420, 0, 0.5, 'lowpass');
+    this.tone(2600, 0.5, 'triangle', 0.1, 0.5, 900);
+  }
+
+  /** Short angular thruster burst when Nemesis dashes across the rail */
+  public nemesisDash(): void {
+    this.tone(320, 0.16, 'sawtooth', 0.12, 0, 900);
+    this.noise(0.14, 0.08, 2600, 0, 1.6);
+  }
+
+  /**
+   * DEADLY RALLY clash: pitch, brightness, and inharmonic partials climb with tier
+   */
+  public rallyClash(tier: number, byPlayer: boolean): void {
+    const t = Math.min(tier, 8);
+    const base = (byPlayer ? 620 : 520) * Math.pow(1.12, t);
+    const partials = [1, 2.41, 3.83, 5.17, 6.62];
+    for (let i = 0; i < partials.length; i++) {
+      this.tone(base * partials[i], Math.max(0.05, 0.26 - i * 0.035), 'triangle', (0.16 / (i + 1)) * (1 + t * 0.06), i * 0.003, base * partials[i] * 0.55);
+    }
+    this.noise(0.1 + t * 0.01, 0.14, 4200 + t * 420, 0, 1.1);
+    this.tone(base * 0.5, 0.14, 'square', 0.12, 0, base * 0.22);
+    if (t >= 3) this.tone(base * 4.2, 0.2, 'sawtooth', 0.06 + t * 0.006, 0.01, base * 2.1);
+    if (t >= 5) this.tone(base * 7.5, 0.16, 'sine', 0.06, 0.02, base * 3);
+  }
+
+  /** The rally is won — lethal tier bolt shatters Nemesis guard */
+  public rallyBreak(): void {
+    this.tone(160, 0.5, 'sawtooth', 0.28, 0, 46);
+    this.tone(90, 0.7, 'sine', 0.25, 0.04, 34);
+    for (let i = 0; i < 5; i++) {
+      this.tone(1200 * Math.pow(0.78, i), 0.22, 'triangle', 0.12, i * 0.035);
+    }
+    this.noise(0.5, 0.2, 1800, 0, 0.7);
+  }
+
+  /** Player loses the rally: dissonant descending sting */
+  public rallyLost(): void {
+    this.tone(420, 0.34, 'sawtooth', 0.18, 0, 110);
+    this.tone(396, 0.34, 'sawtooth', 0.15, 0.02, 104);
+    this.noise(0.3, 0.12, 700, 0, 0.8, 'lowpass');
+  }
+
+  /** Nemesis defeated explosion sequence with deep bass drop */
+  public nemesisDown(): void {
+    for (let i = 0; i < 4; i++) {
+      this.tone(220 - i * 40, 0.6, 'sawtooth', 0.28, i * 0.17, 30);
+    }
+    this.noise(1.8, 0.35, 340, 0.05, 0.5, 'lowpass');
+    this.tone(45, 2.2, 'sine', 0.45, 0.1, 15);
+  }
 }

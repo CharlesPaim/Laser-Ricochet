@@ -457,4 +457,273 @@ export class CannonRenderer {
     g.lineStyle(1.5, 0x00f3ff, 0.85);
     g.strokeRect(barX - 1, barY - 1, barW + 2, barH + 2);
   }
+
+  // =========================================================================
+  // SHADOW DEFLECTOR (Nemesis Duel — Waves 10 / 20 / 30...) LRN-054
+  // =========================================================================
+
+  public static renderNemesis(
+    g: Phaser.GameObjects.Graphics,
+    n: {
+      active: boolean;
+      x: number;
+      y: number;
+      angle: number;
+      radius: number;
+      bladeAngle: number;
+      hp: number;
+      maxHp: number;
+      tier: number;
+      state: string;
+      hitFlash: number;
+      parryFlash: number;
+      spawnT: number;
+      ghostX: number[];
+      ghostY: number[];
+      ghostA: number[];
+      ghostLen: number;
+      rageTier: number;
+    },
+    cx: number,
+    cy: number,
+    time: number
+  ): void {
+    if (!n.active) return;
+
+    const rage = Math.min(1, (n.rageTier || 0) / 6);
+    const glow = n.state === 'recover' ? 0xffea00 : 0xff1744;
+    const accent = n.state === 'recover' ? 0xfff59d : 0xff8fa3;
+    const half = TuningConfig.nemesis.bladeHalf;
+
+    // 1. Motion afterimages (Dash ghosts from ring-buffer)
+    for (let i = 0; i < n.ghostLen; i++) {
+      const k = (i + 1) / (n.ghostLen + 1);
+      g.fillStyle(glow, 0.05 * k);
+      g.fillCircle(n.ghostX[i], n.ghostY[i], 16 * k);
+      g.lineStyle(1.2, glow, 0.16 * k);
+      const ga = n.ghostA[i];
+      g.lineBetween(
+        n.ghostX[i] - Math.cos(ga) * half * 0.8,
+        n.ghostY[i] - Math.sin(ga) * half * 0.8,
+        n.ghostX[i] + Math.cos(ga) * half * 0.8,
+        n.ghostY[i] + Math.sin(ga) * half * 0.8
+      );
+    }
+
+    // 2. Crimson Scythe Blade (bowed outward)
+    CannonRenderer.nemesisBlade(g, n, time, glow, accent, rage, cx, cy);
+
+    // 3. Chassis / Hull
+    const spawn = Math.min(1, n.spawnT || 1);
+    g.save();
+    g.translateCanvas(n.x, n.y);
+    // Nose points inward toward the reactor center
+    g.rotateCanvas(Math.atan2(cy - n.y, cx - n.x));
+    if (spawn < 1) g.scaleCanvas(0.4 + 0.6 * spawn, 0.4 + 0.6 * spawn);
+
+    // Layer 4: Menace aura halo, swells with rally rage
+    g.fillStyle(glow, 0.07 + rage * 0.06);
+    g.fillCircle(0, 0, 26 + rage * 10);
+
+    // Layer 1: Inverted delta wedge chassis
+    g.fillStyle(TuningConfig.nemesis.colorDark, 1);
+    g.beginPath();
+    g.moveTo(21, 0);
+    g.lineTo(2, -9);
+    g.lineTo(-13, -16);
+    g.lineTo(-8, 0);
+    g.lineTo(-13, 16);
+    g.lineTo(2, 9);
+    g.closePath();
+    g.fillPath();
+    g.lineStyle(1.6, glow, 0.85);
+    g.strokePath();
+
+    // Layer 2: Reinforcement ribs
+    g.lineStyle(1, TuningConfig.nemesis.colorRib, 0.95);
+    g.lineBetween(16, 0, -10, -13);
+    g.lineBetween(16, 0, -10, 13);
+    g.lineBetween(-2, -11, -2, 11);
+
+    // Horned sensor crown
+    for (const sy of [-1, 1]) {
+      g.lineStyle(2.2, TuningConfig.nemesis.colorDark, 1);
+      g.beginPath();
+      g.moveTo(-6, sy * 12);
+      g.lineTo(-16, sy * 22);
+      g.lineTo(-4, sy * 19);
+      g.strokePath();
+      g.lineStyle(1.1, glow, 0.8);
+      g.strokePath();
+      g.fillStyle(accent, 0.85);
+      g.fillCircle(-16, sy * 22, 1.7);
+    }
+
+    // Layer 3: Cyclopean optic with slit pupil
+    const p = 0.55 + 0.45 * Math.sin(time * (n.state === 'dash' ? 16 : 5));
+    g.fillStyle(glow, 0.35);
+    g.fillCircle(4, 0, 9 + p * 2.5);
+    g.fillStyle(glow, 0.95);
+    g.fillCircle(4, 0, 4.2);
+    g.fillStyle(0xffffff, 0.92 * p + 0.08);
+    g.fillCircle(4, 0, 1.6);
+    g.lineStyle(1.4, 0x220208, 0.9);
+    g.lineBetween(4, -3.4, 4, 3.4);
+
+    // Rear thrusters flare during dash
+    const th = n.state === 'dash' ? 1 : 0.35;
+    for (const sy of [-6, 6]) {
+      g.fillStyle(0x140810, 1);
+      g.fillRect(-14, sy - 2.6, 6, 5.2);
+      g.fillStyle(glow, 0.5 + 0.4 * th * Math.abs(Math.sin(time * 22 + sy)));
+      g.fillRect(-19 - th * 6, sy - 1.5, 5 + th * 6, 3);
+      g.fillStyle(accent, 0.22);
+      g.fillCircle(-20 - th * 6, sy, 4 + th * 3);
+    }
+
+    // Layer 5: Chassis details & telemetry LEDs
+    g.fillStyle(0xcf9aa8, 0.45);
+    g.fillCircle(-4, -12, 1);
+    g.fillCircle(-4, 12, 1);
+    g.fillCircle(10, 0, 1);
+
+    if (n.hitFlash > 0) {
+      g.fillStyle(0xffffff, Math.min(0.75, n.hitFlash));
+      g.fillCircle(0, 0, 26);
+    }
+    g.restore();
+
+    // 4. Vulnerability tell: RECOVER state cracks the guard open
+    if (n.state === 'recover') {
+      const fl = 0.45 + 0.4 * Math.sin(time * 14);
+      g.lineStyle(2, 0xffea00, fl);
+      g.strokeCircle(n.x, n.y, 30 + Math.sin(time * 9) * 2);
+      g.lineStyle(1, 0xfff59d, fl * 0.6);
+      g.strokeCircle(n.x, n.y, 38);
+    }
+
+    // 5. Parry flare when it returns a bolt
+    if (n.parryFlash > 0) {
+      g.fillStyle(0xff1744, 0.2 * n.parryFlash);
+      g.fillCircle(n.x, n.y, 40 + (1 - n.parryFlash) * 28);
+      g.lineStyle(2.4, 0xffffff, 0.8 * n.parryFlash);
+      g.strokeCircle(n.x, n.y, 24 + (1 - n.parryFlash) * 26);
+    }
+
+    // 6. Boss HP bar with segmented ticks
+    const bw = 88;
+    const by = n.y - 54;
+    g.fillStyle(0x000000, 0.6);
+    g.fillRect(n.x - bw / 2, by, bw, 7);
+    g.fillStyle(glow, 0.95);
+    g.fillRect(n.x - bw / 2 + 1, by + 1, (bw - 2) * Math.max(0, n.hp / n.maxHp), 5);
+    g.lineStyle(1, 0xffffff, 0.4);
+    g.strokeRect(n.x - bw / 2, by, bw, 7);
+    g.lineStyle(1, 0x000000, 0.7);
+    for (let i = 1; i < n.maxHp; i++) {
+      const sx = n.x - bw / 2 + (bw * i) / n.maxHp;
+      g.lineBetween(sx, by + 1, sx, by + 6);
+    }
+  }
+
+  private static nemesisBlade(
+    g: Phaser.GameObjects.Graphics,
+    n: any,
+    time: number,
+    glow: number,
+    accent: number,
+    rage: number,
+    cx: number,
+    cy: number
+  ): void {
+    const a = n.bladeAngle;
+    const half = TuningConfig.nemesis.bladeHalf;
+    const tanX = Math.cos(a);
+    const tanY = Math.sin(a);
+    const polar = Math.atan2(n.y - cy, n.x - cx);
+    const radX = Math.cos(polar);
+    const radY = Math.sin(polar);
+    const STEPS = 14;
+    const BOW = 7;
+
+    const fill = (scale: number, color: number, alpha: number) => {
+      g.fillStyle(color, alpha);
+      g.beginPath();
+      for (let i = 0; i <= STEPS; i++) {
+        const s = -1 + (2 * i) / STEPS;
+        const bulge = Math.sqrt(Math.max(0, 1 - s * s));
+        const th = (1.2 + 5.4 * bulge) * scale;
+        const bx = n.x + tanX * half * s + radX * BOW * bulge;
+        const by = n.y + tanY * half * s + radY * BOW * bulge;
+        const px = bx + radX * th;
+        const py = by + radY * th;
+        if (i === 0) g.moveTo(px, py);
+        else g.lineTo(px, py);
+      }
+      for (let i = STEPS; i >= 0; i--) {
+        const s = -1 + (2 * i) / STEPS;
+        const bulge = Math.sqrt(Math.max(0, 1 - s * s));
+        const th = (1.2 + 5.4 * bulge) * scale;
+        const bx = n.x + tanX * half * s + radX * BOW * bulge;
+        const by = n.y + tanY * half * s + radY * BOW * bulge;
+        g.lineTo(bx - radX * th * 0.7, by - radY * th * 0.7);
+      }
+      g.closePath();
+      g.fillPath();
+    };
+
+    fill(3.2, accent, 0.06 + rage * 0.04);
+    fill(2.0, accent, 0.1);
+    fill(1.3, glow, 0.38);
+    fill(1.0, glow, 0.75);
+    fill(0.32, 0xffffff, 0.9);
+
+    // Carbon spine
+    g.lineStyle(2.4, 0x14040a, 0.95);
+    g.lineBetween(n.x - tanX * half * 0.95, n.y - tanY * half * 0.95, n.x + tanX * half * 0.95, n.y + tanY * half * 0.95);
+    g.lineStyle(1, glow, 0.6);
+    g.strokePath();
+
+    // Tip emitters
+    for (const s of [-1, 1]) {
+      const tx = n.x + tanX * half * s;
+      const ty = n.y + tanY * half * s;
+      g.fillStyle(accent, 0.28);
+      g.fillCircle(tx, ty, 5.5);
+      g.fillStyle(0xffffff, 0.9);
+      g.fillCircle(tx, ty, 1.7);
+    }
+
+    // Rage arcs
+    if (rage > 0.3) {
+      for (let i = 0; i < 3; i++) {
+        const t0 = -1 + Math.random() * 2;
+        const j = 5 + Math.random() * 8;
+        g.lineStyle(1, accent, 0.7 * rage);
+        g.lineBetween(
+          n.x + tanX * half * t0,
+          n.y + tanY * half * t0,
+          n.x + tanX * half * t0 + radX * (Math.random() - 0.5) * j,
+          n.y + tanY * half * t0 + radY * (Math.random() - 0.5) * j
+        );
+      }
+    }
+  }
+
+  /** Rally link: dynamic beam between duellists during active volley */
+  public static drawRallyLink(
+    g: Phaser.GameObjects.Graphics,
+    x1: number,
+    y1: number,
+    x2: number,
+    y2: number,
+    tier: number,
+    time: number
+  ): void {
+    const colors = TuningConfig.nemesis.rallyColors;
+    const col = colors[Math.min(tier, colors.length - 1)];
+    const a = 0.1 + Math.min(0.35, tier * 0.05);
+    g.lineStyle(1.2, col, a * (0.6 + 0.4 * Math.sin(time * 10)));
+    g.lineBetween(x1, y1, x2, y2);
+  }
 }

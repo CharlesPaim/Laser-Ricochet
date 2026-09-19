@@ -22,6 +22,7 @@ export interface LaserOrbData {
   sineAngle?: number;
   sineSpeed?: number;
   sourceCannonId: number;
+  rally?: number;
 }
 
 /**
@@ -46,7 +47,10 @@ export class LaserRenderer {
         ? TuningConfig.laser.colorReflected
         : TuningConfig.laser.colorEnemy;
 
-      if (laser.isOverloadShard) {
+      if (laser.rally && laser.rally > 0) {
+        const rColors = TuningConfig.nemesis.rallyColors;
+        color = rColors[Math.min(laser.rally, rColors.length - 1)];
+      } else if (laser.isOverloadShard) {
         color = TuningConfig.laser.colorOverload;
       } else if (laser.isMegaBeam) {
         color = laser.isReflected ? 0x00ff88 : 0xff003c;
@@ -198,6 +202,53 @@ export class LaserRenderer {
       // Ponta superaquecida branca
       g.fillStyle(0xffffff, 1.0);
       g.fillCircle(laser.x, laser.y, laser.radius * 0.52);
+
+      // ---- DEADLY RALLY escalation: the bolt visibly becomes a volatile weapon
+      if (laser.rally && laser.rally > 0) {
+        const rally = laser.rally;
+        const lethal = rally >= TuningConfig.nemesis.rallyLethalTier;
+        const timeSec = now * 0.001;
+        const spin = timeSec * (6 + rally * 2.4);
+
+        // Containment rings grow with exchange count
+        const rings = Math.min(4, 1 + Math.floor(rally / 2));
+        for (let k = 0; k < rings; k++) {
+          const rr = laser.radius * (2.1 + k * 0.7);
+          g.lineStyle(1.3, color, Math.max(0.1, 0.5 - k * 0.09));
+          g.beginPath();
+          g.arc(laser.x, laser.y, rr, spin + k, spin + k + 2.1);
+          g.strokePath();
+        }
+
+        // Orbiting shear blades
+        const bladeCount = Math.min(6, rally + 1);
+        for (let k = 0; k < bladeCount; k++) {
+          const a = spin * 1.6 + (k / bladeCount) * Math.PI * 2;
+          const rr = laser.radius * 2.5;
+          g.fillStyle(lethal ? 0xffffff : color, 0.75);
+          g.fillCircle(laser.x + Math.cos(a) * rr, laser.y + Math.sin(a) * rr, 1.5);
+        }
+
+        // Lethal-tier corona: this bolt can wound the Nemesis!
+        if (lethal) {
+          const fl = 0.55 + 0.35 * Math.sin(timeSec * 20);
+          g.lineStyle(2, 0xffffff, fl);
+          g.strokeCircle(laser.x, laser.y, laser.radius * 1.75);
+          g.fillStyle(color, 0.16);
+          g.fillCircle(laser.x, laser.y, laser.radius * 4.2);
+          // Cross-hair spikes
+          for (let k = 0; k < 4; k++) {
+            const a = spin * 0.7 + (k / 4) * Math.PI * 2;
+            g.lineStyle(1.6, 0xffffff, fl * 0.8);
+            g.lineBetween(
+              laser.x + Math.cos(a) * laser.radius * 1.9,
+              laser.y + Math.sin(a) * laser.radius * 1.9,
+              laser.x + Math.cos(a) * laser.radius * 3.4,
+              laser.y + Math.sin(a) * laser.radius * 3.4
+            );
+          }
+        }
+      }
     }
   }
 }

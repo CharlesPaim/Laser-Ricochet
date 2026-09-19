@@ -74,6 +74,28 @@ export const TuningConfig = {
     harmonicAmplitude: 24,
     harmonicFrequency: 0.032,
   },
+  nemesis: {
+    orbitMin: 178,
+    orbitMax: 248,
+    bladeHalf: 44,
+    bladeThickness: 9,
+    stalkMin: 620,
+    stalkMax: 1150,
+    dashMs: 330,
+    strikeMs: 260,
+    recoverMs: 950,
+    stalkSpeed: 1.15,
+    dashSpeed: 5.4,
+    color: 0xff1744,
+    colorAccent: 0xff8fa3,
+    colorDark: 0x0b0509,
+    colorRib: 0x3d1420,
+    rallyLethalTier: 3,
+    rallyMaxSpeed: 1150,
+    rallySpeedStep: 1.16,
+    rallyRadiusStep: 1.1,
+    rallyColors: [0x9ffcff, 0x7df9ff, 0xffea00, 0xffaa00, 0xff6a2a, 0xff1744, 0xffffff],
+  },
   ftue: {
     idleHintDelayMs: 1200, // Time without movement in Wave 1 before pulsing guidance
     parryHintDurationMs: 500, // Brief visual prompt for parry opportunity
