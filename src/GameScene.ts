@@ -71,6 +71,7 @@ interface LaserOrb {
   rally?: number;
   rallyLock?: number;
   fromNemesis?: boolean;
+  megaDmg?: number;
 }
 
 export type NemesisState = 'stalk' | 'dash' | 'strike' | 'recover';
@@ -1791,22 +1792,10 @@ export class GameScene extends Phaser.Scene {
       archetypeList.push({ type: 'standard', hp: 1, color: TuningConfig.cannons.colorStandard, radius: TuningConfig.cannons.radius });
       archetypeList.push({ type: 'standard', hp: 1, color: TuningConfig.cannons.colorStandard, radius: TuningConfig.cannons.radius });
       this.showPopup(t('hud_sniper_lock'), '#00ccff');
-    } else if (waveNumber % 10 === 0) {
-      // SHADOW DEFLECTOR (Nemesis Duel — Wave 10, 20, 30...) LRN-054
-      const nemesisTier = Math.max(1, Math.round(waveNumber / 10));
-      this.spawnNemesis(waveNumber);
-      baseOrbit = TuningConfig.waves.orbitSpeedBase * 0.8;
-      // High tiers add tactical escort wingmen
-      if (nemesisTier >= 2) {
-        archetypeList.push({ type: 'sniper', hp: 1, color: TuningConfig.cannons.colorSniper, radius: TuningConfig.cannons.radius });
-      }
-      if (nemesisTier >= 3) {
-        archetypeList.push({ type: 'scatter', hp: 1, color: TuningConfig.cannons.colorScatter, radius: TuningConfig.cannons.radius });
-      }
     } else if (waveNumber % 5 === 0) {
-      // DREADNOUGHT (Orbital Fortress Boss — Wave 5, 15, 25...)
+      // DREADNOUGHT (Orbital Fortress Boss — Wave 5, 10, 15, 20...)
       const bossTier = Math.floor(waveNumber / 5);
-      const bossHp = 6 + (bossTier - 1) * TuningConfig.boss.hpPerTier;
+      const bossHp = TuningConfig.boss.baseHp + (bossTier - 1) * TuningConfig.boss.hpPerTier;
       const bossShield = TuningConfig.boss.shieldMaxHp + Math.floor((bossTier - 1) * TuningConfig.boss.shieldPipsPerTier);
 
       baseOrbit = TuningConfig.waves.orbitSpeedBase * 0.65 * (bossTier % 2 === 0 ? -1 : 1);
@@ -2844,7 +2833,7 @@ export class GameScene extends Phaser.Scene {
             // Re-arm shield and transition back to barrage
             cannon.bossPhase = 'barrage';
             cannon.bossPhaseTimerMs = TuningConfig.boss.barrageDurationMs;
-            cannon.shieldHp = TuningConfig.boss.shieldMaxHp; // Restores 3 shield points
+            cannon.shieldHp = TuningConfig.boss.shieldRestoreOnCycle; // Restores only 1 emergency shield pip (fairer rebalance)
             cannon.bossChargingMegaBeam = false;
             this.showPopup(t('hud_boss_shield_restored'), '#00e1ff');
             this.audioManager.playDeflect(true);
@@ -3334,13 +3323,14 @@ export class GameScene extends Phaser.Scene {
           // SPECIAL INTERCEPT: Boss Mega-Beam
           if (laser.isMegaBeam) {
             if (isParry) {
-              // EPIC MEGA PARRY: Turn into supercharged green beam towards the boss!
+              // EPIC MEGA PARRY: Turn into supercharged green beam towards the boss! (2 DMG)
               this.perfectParriesCount++;
               this.plasmaFragments += TuningConfig.economy.fragmentsPerParry * 3;
               laser.isReflected = true;
               laser.trajectoryType = 'linear';
               laser.vx = -laser.vx * 1.5;
               laser.vy = -laser.vy * 1.5;
+              laser.megaDmg = TuningConfig.boss.megaBeamParryDamage;
               this.audioManager.playSuperRicochet();
               this.hitstopTimerMs = 90;
               this.cameras.main.shake(220, 0.02);
@@ -3351,12 +3341,18 @@ export class GameScene extends Phaser.Scene {
               this.updateUI();
               continue;
             } else {
-              // Normal contact dissipates the beam with heavy recoil
-              this.lasers.splice(i, 1);
+              // Normal contact reflects beam back to boss with standard 1 DMG
+              laser.isReflected = true;
+              laser.trajectoryType = 'linear';
+              laser.vx = -laser.vx * 1.1;
+              laser.vy = -laser.vy * 1.1;
+              laser.megaDmg = TuningConfig.boss.megaBeamNormalDamage;
               this.audioManager.playDeflect(false);
+              this.hitstopTimerMs = 45;
               this.cameras.main.shake(120, 0.012);
-              this.spawnSparks(laser.x, laser.y, 0xff0055, 24);
-              this.showPopup(t('hud_boss_beam_dissipated'), '#ffaa00');
+              this.spawnSparks(laser.x, laser.y, 0x00ffff, 20);
+              this.showPopup(t('hud_deflect'), '#00e5ff');
+              this.score += 100;
               this.updateUI();
               continue;
             }
@@ -3693,7 +3689,7 @@ export class GameScene extends Phaser.Scene {
             }
 
             this.lasers.splice(i, 1);
-            const dmg = laser.isMegaBeam ? 3 : 1;
+            const dmg = laser.isMegaBeam ? (laser.megaDmg || 1) : 1;
             cannon.hp -= dmg;
             cannon.hitFlashTimerMs = 140;
             this.spawnSparks(cannon.x, cannon.y, 0xffaa00, cannon.type === 'boss' ? 26 : 14);

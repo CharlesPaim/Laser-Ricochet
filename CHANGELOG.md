@@ -4,6 +4,15 @@ Todas as mudanças notáveis deste projeto são documentadas neste arquivo de ac
 
 ---
 
+## [5.4.3] — 2026-09-19
+### Balanceamento & Correção (Chefe Dreadnought)
+- **Calibração de HP da Fortaleza Dreadnought:** HP base na Onda 5 reduzido de 6 para 4 (`baseHp: 4`), permitindo um ritmo de combate justo e gratificante.
+- **Deflexão Normal do Mega-Beam com Dano:** Contato normal com a lâmina agora reflete o feixe colossal de volta à fortaleza causando 1 de dano (`megaBeamNormalDamage: 1`), enquanto o Parry Perfeito premia o jogador com 2 de dano crítico (`megaBeamParryDamage: 2`), eliminando o bloqueio de dano 0 caso o parry não fosse acionado com timing perfeito.
+- **Escudo de Emergência Pós-Ciclo Reduzido:** Reativação do escudo da fortaleza ao término da fase de vulnerabilidade agora regenera apenas 1 ponto de escudo (`shieldRestoreOnCycle: 1`) em vez dos 3 pontos máximos, premiando o esforço de quebra de escudo anterior e encurtando ciclos subsequentes.
+- **Janela de Vulnerabilidade Estendida:** Duração do estado desprotegido aumentada de 5000ms para 6000ms (`vulnerableDurationMs: 6000`), garantindo tempo suficiente para manobrar e contra-atacar com sucesso.
+
+---
+
 ## [5.4.2] — 2026-09-19
 ### Corrigido
 - **Dissipação na Blindagem do Nemesis:** Disparos não-letais que atingem a carcaça/chassi do Nemesis agora são absorvidos e dissipados no impacto (`GUARDED`) com faíscas metálicas, eliminando o loop de desaceleração infinita ("efeito Zeno") e a presença de tiros residuais parados na arena.

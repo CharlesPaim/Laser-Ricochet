@@ -8,10 +8,29 @@ export interface PatchNoteEntry {
   };
 }
 
-export const GAME_VERSION = 'v5.4.2';
+export const GAME_VERSION = 'v5.4.3';
 export const GAME_BUILD_DATE = '2026-09-19';
 
 export const PATCH_NOTES: PatchNoteEntry[] = [
+  {
+    version: 'v5.4.3',
+    codename: 'Dreadnought Fortress Balanced Encounter',
+    date: '2026-09-19',
+    highlights: {
+      en: [
+        'Balanced Boss HP: Calibrated Dreadnought base HP from 6 to 4 on Wave 5 for fair pacing.',
+        'Mega-Beam Deflection: Normal blade contact now deflects Mega-Beam back to boss (1 DMG); Perfect Parry deals critical 2 DMG.',
+        'Emergency Shield Tuning: Shield re-arming after vulnerable window restores 1 emergency pip (instead of 3), rewarding prior shield breaks.',
+        'Extended Vulnerability: Vulnerable window increased to 6000ms, providing ample time to punish the fortress.',
+      ],
+      pt: [
+        'HP do Chefe Balanceado: HP base da Fortaleza Dreadnought calibrado de 6 para 4 na Onda 5 para ritmo justo.',
+        'Deflexão do Mega-Beam: Contato normal da lâmina agora reflete o Mega-Beam de volta (1 DMG); Parry Perfeito causa 2 DMG crítico.',
+        'Escudo de Emergência Justo: Reativação do escudo pós-janela vulnerável restaura apenas 1 pip emergencial (em vez de 3).',
+        'Vulnerabilidade Estendida: Janela vulnerável aumentada para 6000ms, garantindo tempo adequado para punir a fortaleza.',
+      ],
+    },
+  },
   {
     version: 'v5.4.2',
     codename: 'Nemesis Hull Absorption & Anti-Freeze Safeguard',

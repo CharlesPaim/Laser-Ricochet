@@ -23,6 +23,7 @@ export interface LaserOrbData {
   sineSpeed?: number;
   sourceCannonId: number;
   rally?: number;
+  megaDmg?: number;
 }
 
 /**

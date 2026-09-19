@@ -65,11 +65,15 @@ export const TuningConfig = {
     enrageOrbitMultiplier: 1.85, // Enraged lone cannon speeds up dynamically
   },
   boss: {
+    baseHp: 4, // Rebalanced down from 6 to 4 for clean, achievable human kill in Wave 5
     barrageDurationMs: 6000,
-    vulnerableDurationMs: 5000,
+    vulnerableDurationMs: 6000, // Extended from 5000ms to 6000ms for solid counter-attack window
     megaBeamSpeed: 380,
     megaBeamRadius: 18,
+    megaBeamNormalDamage: 1, // Normal blade deflection now reflects and deals 1 DMG
+    megaBeamParryDamage: 2, // Perfect parry grants 2 DMG bonus
     shieldMaxHp: 3,
+    shieldRestoreOnCycle: 1, // Restores only 1 emergency shield pip per cycle instead of full 3!
     bossIntervalWaves: 5, // Boss appears every 5 waves (Wave 5, 10, 15...)
     hpPerTier: 2, // +2 HP each subsequent boss appearance
     shieldPipsPerTier: 1, // +1 shield hit every 2 appearances
