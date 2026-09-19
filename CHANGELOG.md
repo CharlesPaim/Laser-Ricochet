@@ -4,6 +4,14 @@ Todas as mudanças notáveis deste projeto são documentadas neste arquivo de ac
 
 ---
 
+## [5.4.5] — 2026-09-19
+### Supressão de Anúncios em Staging (Vercel) & Poki Inspector
+- **Supressão Total de Anúncios Fora da Poki:** Intersticiais (`commercialBreak`) e anúncios premiados (`rewardedBreak`) são estritamente contornados sem disparar a rede de anúncios quando executados fora do domínio oficial da Poki (`poki.com`, `poki-gdn.com`), garantindo playtests 100% limpos e livres de interrupções no Vercel, GitHub Pages e localhost.
+- **Suporte ao Poki Inspector & Homologação:** Detecção transparente de parâmetros de URL (`?poki_inspector=true` ou `?poki_test=true`) para permitir que a equipe da Poki execute suas baterias de validação sem poluir a experiência dos jogadores no Vercel.
+- **Eliminação de Alertas de Console de Host:** Banido o alerta `Possible Unauthorized Game Hosting Detected` ao não chamar os endpoints de ad em ambientes externos.
+
+---
+
 ## [5.4.4] — 2026-09-19
 ### Adequação Técnica Poki SDK & Hardening de Ciclo de Vida
 - **Ciclo de Vida Estrito e Idempotente (Poki SDK):** Implementada máquina de estados com guarda booleana interna em `PokiService` banindo 100% de chamadas consecutivas redundantes (`gameplayStart -> gameplayStart` e `gameplayStop -> gameplayStop`).

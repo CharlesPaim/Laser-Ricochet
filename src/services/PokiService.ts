@@ -76,8 +76,15 @@ export class PokiService {
     if (typeof window === 'undefined') return false;
     const host = window.location.hostname;
     const isPokiHost = host.endsWith('poki.com') || host.endsWith('poki-gdn.com');
-    const isPokiReferrer = typeof document !== 'undefined' && (document.referrer.includes('poki.com') || document.referrer.includes('poki-gdn.com'));
-    return isPokiHost || isPokiReferrer;
+    const isPokiReferrer =
+      typeof document !== 'undefined' &&
+      (document.referrer.includes('poki.com') || document.referrer.includes('poki-gdn.com'));
+    const urlParams =
+      typeof window !== 'undefined' && window.location
+        ? new URLSearchParams(window.location.search)
+        : null;
+    const isPokiInspector = urlParams?.has('poki_inspector') || urlParams?.has('poki_test');
+    return isPokiHost || isPokiReferrer || !!isPokiInspector;
   }
 
   public static gameLoadingFinished(): void {
@@ -146,7 +153,7 @@ export class PokiService {
       if (onBeforeAd) onBeforeAd();
       this.recordEvent('commercialBreak');
 
-      if (typeof window !== 'undefined' && window.PokiSDK) {
+      if (this.isPokiEnvironment() && typeof window !== 'undefined' && window.PokiSDK) {
         await window.PokiSDK.commercialBreak();
       } else {
         await new Promise((res) => setTimeout(res, 50));
@@ -173,10 +180,10 @@ export class PokiService {
       if (onBeforeAd) onBeforeAd();
       this.recordEvent('rewardedBreak');
 
-      if (typeof window !== 'undefined' && window.PokiSDK) {
+      if (this.isPokiEnvironment() && typeof window !== 'undefined' && window.PokiSDK) {
         success = await window.PokiSDK.rewardedBreak();
       } else {
-        console.log('[PokiService] PokiSDK not loaded on window: rewarded break auto-resolved.');
+        console.log('[PokiService] Outside Poki domain: rewarded break auto-resolved.');
         await new Promise((res) => setTimeout(res, 50));
         success = true;
       }

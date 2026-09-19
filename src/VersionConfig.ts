@@ -8,10 +8,27 @@ export interface PatchNoteEntry {
   };
 }
 
-export const GAME_VERSION = 'v5.4.4';
+export const GAME_VERSION = 'v5.4.5';
 export const GAME_BUILD_DATE = '2026-09-19';
 
 export const PATCH_NOTES: PatchNoteEntry[] = [
+  {
+    version: 'v5.4.5',
+    codename: 'Staging Ad Suppression & Poki Inspector Targeting',
+    date: '2026-09-19',
+    highlights: {
+      en: [
+        'Ad Suppression on Staging: Interstitial and rewarded video ads strictly bypassed outside official Poki domains (zero video ads on Vercel/GitHub Pages).',
+        'Poki Inspector Targeting: Dedicated support for ?poki_inspector=true and ?poki_test=true for Poki QA inspection without polluting public playtests.',
+        'Zero Hostile Warnings: Eliminates unauthorized host console alerts on non-Poki domains.',
+      ],
+      pt: [
+        'Supressão de Anúncios no Vercel: Anúncios em vídeo estritamente suprimidos fora de domínios Poki oficiais (zero anúncios no Vercel/GitHub Pages).',
+        'Suporte ao Poki Inspector: Habilita testes manuais via ?poki_inspector=true e ?poki_test=true sem poluir playtests públicos.',
+        'Zero Alertas de Host: Elimina avisos de hospedagem não autorizada no console em domínios de homologação.',
+      ],
+    },
+  },
   {
     version: 'v5.4.4',
     codename: 'Poki SDK Technical Compliance & Lifecycle Hardening',
