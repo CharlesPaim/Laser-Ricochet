@@ -23,6 +23,7 @@ const config: Phaser.Types.Core.GameConfig = {
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
   input: {
+    activePointers: 3,
     keyboard: {
       capture: [
         Phaser.Input.Keyboard.KeyCodes.SPACE,

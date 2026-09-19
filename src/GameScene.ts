@@ -268,9 +268,21 @@ export class GameScene extends Phaser.Scene {
 
   private nextPowerupId: number = 1;
 
-  // Touchpad & Ergonomia Mobile
-  private lastTouchX: number = 0;
-  private isDraggingTouchpad: boolean = false;
+  // Controles Dual-Thumb Arcade & Ergonomia Mobile (LRN-040, LRN-049)
+  private isTouchDevice: boolean = false;
+  private isJoystickActive: boolean = false;
+  private joystickPointerId: number | null = null;
+  private joystickOriginX: number = 0;
+  private joystickOriginY: number = 0;
+  private joystickCurrentX: number = 0;
+  private joystickCurrentY: number = 0;
+  private parryBtnX: number = 845;
+  private parryBtnY: number = 400;
+  private parryBtnRadius: number = 46;
+  private isParryBtnPressed: boolean = false;
+  private parryPointerId: number | null = null;
+  private parryBtnText!: Phaser.GameObjects.Text;
+  private fullscreenBtn!: Phaser.GameObjects.Text;
 
   // Pool Estático Pré-Alocado de 16 Fragmentos Bezier (RNF-01.3)
   private flyingFragments: FlyingFragmentParticleData[] = [];
@@ -465,9 +477,20 @@ export class GameScene extends Phaser.Scene {
     this.bladeY = TuningConfig.arena.centerY;
     this.bladeAngle = Math.PI / 2;
 
-    // Input handling (Ergonomia Mobile Trackball Relativo + Mouse Polar Desktop)
+    // Detecção inicial de dispositivo touch/mobile
+    this.isTouchDevice =
+      this.sys.game.device.input.touch ||
+      (typeof window !== 'undefined' &&
+        ('ontouchstart' in window || navigator.maxTouchPoints > 0));
+
+    // Input handling: Dual-Thumb Arcade no Mobile + Mouse Polar 1:1 no Desktop
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
       if (this.isShowingAd) return;
+
+      if (p.wasTouch) {
+        this.isTouchDevice = true;
+        this.updateMobileControlsVisibility();
+      }
 
       if (this.isMiniRogueOpen) {
         for (const card of this.miniRogueCards) {
@@ -489,16 +512,29 @@ export class GameScene extends Phaser.Scene {
         }
       }
 
-      // Trackball Horizontal Relativo no mobile / quadrante inferior (elimina ponto cego)
-      const isTouchOrLowerHalf = this.isDraggingTouchpad || (p.wasTouch && p.y > TuningConfig.touchpad.touchZoneY);
-      if (isTouchOrLowerHalf) {
-        const deltaX = p.x - this.lastTouchX;
-        this.lastTouchX = p.x;
-        this.bladeAngle += deltaX * TuningConfig.touchpad.touchSensitivity;
-        const orbitR = 125;
-        this.bladeX = cx + Math.cos(this.bladeAngle - Math.PI / 2) * orbitR;
-        this.bladeY = cy + Math.sin(this.bladeAngle - Math.PI / 2) * orbitR;
-      } else {
+      // 1. Mobile Dual-Thumb: Controle Direcional via Joystick Flutuante (Polegar Esquerdo)
+      if (p.id === this.joystickPointerId) {
+        this.joystickCurrentX = p.x;
+        this.joystickCurrentY = p.y;
+        const dx = p.x - this.joystickOriginX;
+        const dy = p.y - this.joystickOriginY;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist > 8) {
+          const angle = Math.atan2(dy, dx);
+          this.bladeAngle = angle + Math.PI / 2;
+          const orbitR = 125;
+          this.bladeX = cx + Math.cos(angle) * orbitR;
+          this.bladeY = cy + Math.sin(angle) * orbitR;
+        }
+
+        // Âncora flutuante segue suavemente o polegar se afastar muito
+        if (dist > 60) {
+          this.joystickOriginX = p.x - (dx / dist) * 60;
+          this.joystickOriginY = p.y - (dy / dist) * 60;
+        }
+      } else if (!p.wasTouch && !this.isTouchDevice) {
+        // 2. Desktop: Rastreamento Polar 1:1 rigoroso com Mouse
         const dx = p.x - cx;
         const dy = p.y - cy;
         const dist = Math.hypot(dx, dy);
@@ -525,6 +561,12 @@ export class GameScene extends Phaser.Scene {
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (this.isShowingAd) return;
       this.audioManager.init();
+
+      if (pointer.wasTouch) {
+        this.isTouchDevice = true;
+        this.updateMobileControlsVisibility();
+      }
+
       if (this.isHelpOpen) {
         this.toggleHelp(false);
         return;
@@ -542,27 +584,61 @@ export class GameScene extends Phaser.Scene {
         }
         return;
       }
-      // Se clicou em botão de UI interativo, prioriza o botão
+      // Se clicou em botão de UI interativo (exceto o próprio botão de parry móvel), prioriza o botão
       const hits = this.input.hitTestPointer(pointer);
-      if (hits && hits.length > 0) {
+      const uiHits = hits ? hits.filter((h) => h !== this.parryBtnText) : [];
+      if (uiHits.length > 0) {
         return;
       }
       if (!this.isRoundActive && this.restartAllowed) {
         this.recordMetric('restart_clicked', { trigger: 'pointer' });
         this.recordMetric('restart');
-        this.requestRestartWithAd();
+        if (this.coreHealth <= 0) {
+          this.requestRestartWithAd();
+        } else {
+          this.startNewGame();
+        }
         return;
       }
 
-      if (pointer.y > TuningConfig.touchpad.touchZoneY || pointer.wasTouch) {
-        this.lastTouchX = pointer.x;
-        this.isDraggingTouchpad = true;
+      const isTouch = pointer.wasTouch || this.isTouchDevice;
+      if (isTouch && this.isRoundActive) {
+        // Verificar se tocou na zona do botão de Parry no canto inferior direito
+        const distToParry = Math.hypot(pointer.x - this.parryBtnX, pointer.y - this.parryBtnY);
+        const isParryHit = (hits && hits.includes(this.parryBtnText)) || distToParry <= this.parryBtnRadius + 18 || (pointer.x >= 750 && pointer.y >= 320);
+        if (isParryHit) {
+          this.isParryBtnPressed = true;
+          this.parryPointerId = pointer.id;
+          this.updateMobileControlsVisibility();
+          this.triggerParry();
+          return;
+        }
+
+        // Caso contrário: ativa o Joystick Flutuante no polegar esquerdo / área de mira
+        if (this.joystickPointerId === null) {
+          this.joystickPointerId = pointer.id;
+          this.joystickOriginX = pointer.x;
+          this.joystickOriginY = pointer.y;
+          this.joystickCurrentX = pointer.x;
+          this.joystickCurrentY = pointer.y;
+          this.isJoystickActive = true;
+        }
+      } else if (!isTouch) {
+        // Desktop com Mouse: clique aciona Parry
+        this.triggerParry();
       }
-      this.triggerParry();
     });
 
-    this.input.on('pointerup', () => {
-      this.isDraggingTouchpad = false;
+    this.input.on('pointerup', (p: Phaser.Input.Pointer) => {
+      if (p.id === this.joystickPointerId) {
+        this.isJoystickActive = false;
+        this.joystickPointerId = null;
+      }
+      if (p.id === this.parryPointerId) {
+        this.isParryBtnPressed = false;
+        this.parryPointerId = null;
+        this.updateMobileControlsVisibility();
+      }
     });
 
     this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE).on('down', () => {
@@ -579,7 +655,11 @@ export class GameScene extends Phaser.Scene {
       if (!this.isRoundActive && this.restartAllowed) {
         this.recordMetric('restart_clicked', { trigger: 'key_SPACE' });
         this.recordMetric('restart');
-        this.requestRestartWithAd();
+        if (this.coreHealth <= 0) {
+          this.requestRestartWithAd();
+        } else {
+          this.startNewGame();
+        }
       } else {
         this.triggerParry();
       }
@@ -591,7 +671,11 @@ export class GameScene extends Phaser.Scene {
       if (!this.isRoundActive && this.restartAllowed) {
         this.recordMetric('restart_clicked', { trigger: 'key_R' });
         this.recordMetric('restart');
-        this.requestRestartWithAd();
+        if (this.coreHealth <= 0) {
+          this.requestRestartWithAd();
+        } else {
+          this.startNewGame();
+        }
       }
     });
 
@@ -943,6 +1027,52 @@ export class GameScene extends Phaser.Scene {
       this.applyLanguageChange();
     });
 
+    // Botão de Tela Cheia (Fullscreen) para Mobile Web & Poki
+    this.fullscreenBtn = this.add.text(250, TuningConfig.arena.height - 24, t('btn_fullscreen'), {
+      fontFamily: "'Orbitron', monospace",
+      fontSize: '12px',
+      fontStyle: 'bold',
+      color: '#00f3ff',
+      backgroundColor: '#0c1626',
+      padding: { x: 10, y: 6 },
+    }).setOrigin(0, 1).setDepth(15).setInteractive({ useHandCursor: true });
+
+    this.fullscreenBtn.on('pointerdown', () => {
+      try {
+        if (this.scale.isFullscreen) {
+          this.scale.stopFullscreen();
+        } else {
+          this.scale.startFullscreen();
+        }
+      } catch (e) {
+        console.warn('[GameScene] Fullscreen toggle error:', e);
+      }
+    });
+
+    // Botão Tátil Arcade de Parry no Mobile (Polegar Direito)
+    this.parryBtnText = this.add.text(this.parryBtnX, this.parryBtnY, t('btn_parry_mobile'), {
+      fontFamily: "'Orbitron', monospace",
+      fontSize: '15px',
+      fontStyle: 'bold',
+      color: '#00f3ff',
+      align: 'center',
+    }).setOrigin(0.5).setDepth(16).setVisible(false).setInteractive({ useHandCursor: true });
+
+    this.parryBtnText.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      if (this.isShowingAd) return;
+      this.audioManager.init();
+      this.isParryBtnPressed = true;
+      this.parryPointerId = p.id;
+      this.updateMobileControlsVisibility();
+      this.triggerParry();
+    });
+
+    this.parryBtnText.on('pointerup', () => {
+      this.isParryBtnPressed = false;
+      this.parryPointerId = null;
+      this.updateMobileControlsVisibility();
+    });
+
     // Help Modal Overlay Text Elements
     this.helpTitleText = this.add.text(TuningConfig.arena.centerX, TuningConfig.arena.centerY - 145, t('help_title'), {
       fontFamily: "'Orbitron', monospace",
@@ -1061,10 +1191,22 @@ export class GameScene extends Phaser.Scene {
     const isCrtOn = crtEl ? crtEl.style.display !== 'none' : true;
     if (this.crtBtn) this.crtBtn.setText(t(isCrtOn ? 'btn_crt_on' : 'btn_crt_off'));
 
+    if (this.fullscreenBtn) this.fullscreenBtn.setText(t('btn_fullscreen'));
+    if (this.parryBtnText) this.parryBtnText.setText(t('btn_parry_mobile'));
+
     this.updateHangarUI();
     this.updateUI();
     this.updateQuestUI();
+    this.updateMobileControlsVisibility();
     this.render();
+  }
+
+  public updateMobileControlsVisibility(): void {
+    if (this.parryBtnText) {
+      const show = this.isTouchDevice && this.isRoundActive && !this.isPaused && !this.isHelpOpen && !this.isMiniRogueOpen;
+      this.parryBtnText.setVisible(show);
+      this.parryBtnText.setColor(this.isParryBtnPressed ? '#ffea00' : '#00f3ff');
+    }
   }
 
   private showPopup(msg: string, color = '#ffea00'): void {
@@ -1475,6 +1617,7 @@ export class GameScene extends Phaser.Scene {
 
     this.statusText.setText(statusParts.join(' '));
     this.updateQuestUI();
+    this.updateMobileControlsVisibility();
   }
 
   private updateQuestUI(): void {
@@ -3203,6 +3346,22 @@ export class GameScene extends Phaser.Scene {
     } else if (!this.isRoundActive && this.coreHealth > 0 && !this.restartAllowed) {
       HudRenderer.renderStartCard(g, cx, cy);
     }
+
+    // 13. Controles Táteis Mobile Dual-Thumb (Joystick Flutuante + Botão Neon de Parry)
+    const showMobileParry = this.isTouchDevice && this.isRoundActive && !this.isPaused && !this.isHelpOpen && !this.isMiniRogueOpen;
+    HudRenderer.renderMobileControls(
+      g,
+      this.isJoystickActive,
+      this.joystickOriginX,
+      this.joystickOriginY,
+      this.joystickCurrentX,
+      this.joystickCurrentY,
+      showMobileParry,
+      this.parryBtnX,
+      this.parryBtnY,
+      this.parryBtnRadius,
+      this.isParryBtnPressed
+    );
   }
 
   // ---------------------------------------------------------------------------

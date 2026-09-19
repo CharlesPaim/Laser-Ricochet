@@ -391,4 +391,63 @@ export class HudRenderer {
       g.lineBetween(c.x + 16, c.y + 44, c.x + c.w - 16, c.y + 44);
     }
   }
+
+  /**
+   * Renderiza os controles de toque tátil para mobile:
+   * 1. Mini-joystick virtual flutuante (polegar esquerdo)
+   * 2. Botão neon de Parry com anéis concêntricos (polegar direito)
+   */
+  public static renderMobileControls(
+    g: Phaser.GameObjects.Graphics,
+    isJoystickActive: boolean,
+    joyOriginX: number,
+    joyOriginY: number,
+    joyCurrentX: number,
+    joyCurrentY: number,
+    showParryBtn: boolean,
+    parryBtnX: number,
+    parryBtnY: number,
+    parryBtnRadius: number,
+    isParryPressed: boolean
+  ): void {
+    // 1. Virtual Joystick flutuante no polegar esquerdo
+    if (isJoystickActive) {
+      // Anel de base translúcido
+      g.lineStyle(2, 0x00f3ff, 0.5);
+      g.strokeCircle(joyOriginX, joyOriginY, 52);
+      g.fillStyle(0x0c1626, 0.4);
+      g.fillCircle(joyOriginX, joyOriginY, 52);
+
+      // Linha de tensão entre a base e o polegar
+      g.lineStyle(2, 0x00f3ff, 0.35);
+      g.lineBetween(joyOriginX, joyOriginY, joyCurrentX, joyCurrentY);
+
+      // Manípulo táctil de controle
+      g.fillStyle(0x00f3ff, 0.85);
+      g.fillCircle(joyCurrentX, joyCurrentY, 20);
+      g.fillStyle(0xffffff, 0.95);
+      g.fillCircle(joyCurrentX, joyCurrentY, 8);
+    }
+
+    // 2. Botão Arcade de Parry no polegar direito
+    if (showParryBtn) {
+      const ringColor = isParryPressed ? 0xffea00 : 0x00f3ff;
+      const fillColor = isParryPressed ? 0x302500 : 0x081324;
+      const alpha = isParryPressed ? 0.85 : 0.65;
+      const r = isParryPressed ? parryBtnRadius * 0.94 : parryBtnRadius;
+
+      // Halo de luz externo
+      g.lineStyle(3, ringColor, isParryPressed ? 1.0 : 0.8);
+      g.strokeCircle(parryBtnX, parryBtnY, r);
+
+      // Fundo em vidro escuro
+      g.fillStyle(fillColor, alpha);
+      g.fillCircle(parryBtnX, parryBtnY, r);
+
+      // Anel tático interno concêntrico
+      g.lineStyle(1.5, ringColor, isParryPressed ? 0.7 : 0.35);
+      g.strokeCircle(parryBtnX, parryBtnY, r - 7);
+    }
+  }
 }
+
