@@ -8,10 +8,29 @@ export interface PatchNoteEntry {
   };
 }
 
-export const GAME_VERSION = 'v5.4.3';
+export const GAME_VERSION = 'v5.4.4';
 export const GAME_BUILD_DATE = '2026-09-19';
 
 export const PATCH_NOTES: PatchNoteEntry[] = [
+  {
+    version: 'v5.4.4',
+    codename: 'Poki SDK Technical Compliance & Lifecycle Hardening',
+    date: '2026-09-19',
+    highlights: {
+      en: [
+        'Strict SDK Lifecycle: Enforced idempotent state machine preventing duplicate gameplayStart or gameplayStop calls.',
+        'Zero Input During Ads: Input subsystem strictly disabled during commercial and rewarded breaks, restoring on ad completion.',
+        'Centralized Restart Guard: Unified restart through single pipeline with 350ms lock across buttons, Space, and R keys.',
+        'Incognito In-Memory Fallback: Resilient volatile storage protects game progression when localStorage is restricted.',
+      ],
+      pt: [
+        'Ciclo de Vida Estrito Poki: Máquina de estados idempotente bloqueia chamadas duplicadas de gameplayStart ou gameplayStop.',
+        'Zero Input Durante Anúncios: Entrada do Phaser estritamente suspensa durante anúncios comerciais e premiados.',
+        'Guarda de Reinício Centralizada: Pipeline unificado de reinício com trava de 350ms em botões, barra de espaço e tecla R.',
+        'Fallback em Memória Incógnito: Armazenamento volátil protege a progressão do jogo caso o localStorage esteja bloqueado.',
+      ],
+    },
+  },
   {
     version: 'v5.4.3',
     codename: 'Dreadnought Fortress Balanced Encounter',

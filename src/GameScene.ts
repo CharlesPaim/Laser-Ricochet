@@ -405,12 +405,14 @@ export class GameScene extends Phaser.Scene {
   }> = [];
   private miniRogueUiElements: Phaser.GameObjects.GameObject[] = [];
 
+  private memoryStatsFallback?: GameStats;
+
   constructor() {
     super('GameScene');
   }
 
   public loadStats(): GameStats {
-    let stats: GameStats = {
+    let stats: GameStats = this.memoryStatsFallback || {
       highScore: 0,
       highestWave: 1,
       highestCombo: 0,
@@ -440,18 +442,20 @@ export class GameScene extends Phaser.Scene {
         }
       }
     } catch (e) {
-      console.warn('[GameScene] localStorage read failed (private mode/sandboxed). Using volatile fallback.', e);
+      console.warn('[GameScene] localStorage read failed (private mode/sandboxed). Using volatile memory fallback.', e);
     }
+    this.memoryStatsFallback = stats;
     return stats;
   }
 
   public saveStats(stats: GameStats): void {
+    this.memoryStatsFallback = stats;
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
         localStorage.setItem(TuningConfig.storage.key, JSON.stringify(stats));
       }
     } catch (e) {
-      console.warn('[GameScene] localStorage write failed (private mode/sandboxed).', e);
+      console.warn('[GameScene] localStorage write failed (private mode/sandboxed). Progress kept in session memory.', e);
     }
   }
 
@@ -693,13 +697,7 @@ export class GameScene extends Phaser.Scene {
         return;
       }
       if (!this.isRoundActive && this.restartAllowed) {
-        this.recordMetric('restart_clicked', { trigger: 'pointer' });
-        this.recordMetric('restart');
-        if (this.coreHealth <= 0) {
-          this.requestRestartWithAd();
-        } else {
-          this.startNewGame();
-        }
+        this.triggerRestart('pointer');
         return;
       }
 
@@ -758,14 +756,11 @@ export class GameScene extends Phaser.Scene {
         this.resumeGame();
         return;
       }
-      if (!this.isRoundActive && this.restartAllowed) {
-        this.recordMetric('restart_clicked', { trigger: 'key_SPACE' });
-        this.recordMetric('restart');
-        if (this.coreHealth <= 0) {
-          this.requestRestartWithAd();
-        } else {
-          this.startNewGame();
+      if (!this.isRoundActive) {
+        if (this.restartAllowed) {
+          this.triggerRestart('key_SPACE');
         }
+        return;
       } else {
         this.triggerParry();
       }
@@ -775,13 +770,7 @@ export class GameScene extends Phaser.Scene {
       if (this.isShowingAd) return;
       this.audioManager.init();
       if (!this.isRoundActive && this.restartAllowed) {
-        this.recordMetric('restart_clicked', { trigger: 'key_R' });
-        this.recordMetric('restart');
-        if (this.coreHealth <= 0) {
-          this.requestRestartWithAd();
-        } else {
-          this.startNewGame();
-        }
+        this.triggerRestart('key_R');
       }
     });
 
@@ -1048,10 +1037,7 @@ export class GameScene extends Phaser.Scene {
       this.restartButton.setColor('#ffea00');
     });
     this.restartButton.on('pointerdown', () => {
-      if (!this.isRoundActive && this.restartAllowed && !this.isShowingAd) {
-        this.recordMetric('restart_clicked', { trigger: 'button' });
-        this.requestRestartWithAd();
-      }
+      this.triggerRestart('button');
     });
 
     this.restartHintText = this.add.text(TuningConfig.arena.centerX, 395, t('restart_hint'), {
@@ -3958,12 +3944,13 @@ export class GameScene extends Phaser.Scene {
       if (isBoss) {
         PokiService.showCommercial(
           () => {
-            this.isShowingAd = true;
             this.audioManager.muteForAd();
+            this.disableGameplayInput();
           },
           () => {
+            this.enableGameplayInput();
             this.audioManager.unmuteAfterAd();
-            this.isShowingAd = false;
+            PokiService.gameplayStart();
             proceed();
           }
         );
@@ -3975,6 +3962,7 @@ export class GameScene extends Phaser.Scene {
 
   private handleDefeat(): void {
     this.isRoundActive = false;
+    this.restartAllowed = false;
     this.powerupLabel.setVisible(false);
     this.audioManager.stopAmbientHum();
     PokiService.gameplayStop();
@@ -4063,9 +4051,9 @@ export class GameScene extends Phaser.Scene {
 
     this.render();
 
-    this.time.delayedCall(350, () => {
+    window.setTimeout(() => {
       this.restartAllowed = true;
-    });
+    }, 350);
   }
 
 
@@ -4346,40 +4334,96 @@ export class GameScene extends Phaser.Scene {
   }
 
   // ---------------------------------------------------------------------------
+  // Poki Input & Lifecycle Suspension
+  // ---------------------------------------------------------------------------
+  private disableGameplayInput(): void {
+    this.isShowingAd = true;
+    if (this.input) {
+      this.input.enabled = false;
+    }
+    this.isJoystickActive = false;
+    this.joystickPointerId = null;
+    this.isParryBtnPressed = false;
+    this.parryPointerId = null;
+  }
+
+  private enableGameplayInput(): void {
+    this.isShowingAd = false;
+    if (this.input) {
+      this.input.enabled = true;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Centralized Restart Trigger
+  // ---------------------------------------------------------------------------
+  private triggerRestart(triggerSource: string): void {
+    if (this.isShowingAd) return;
+    if (this.isRoundActive) return;
+    if (!this.restartAllowed) return;
+
+    // Immediately lock restart to prevent multiple clicks or keypresses
+    this.restartAllowed = false;
+    this.recordMetric('restart_clicked', { trigger: triggerSource });
+    this.recordMetric('restart');
+
+    if (this.coreHealth <= 0) {
+      this.requestRestartWithAd();
+    } else {
+      this.startNewGame();
+    }
+  }
+
+  // ---------------------------------------------------------------------------
   // Poki Ad Breaks & Revive Handling
   // ---------------------------------------------------------------------------
-  private requestRestartWithAd(): void {
-    if (this.isShowingAd) return;
-    PokiService.showCommercial(
+  private requestRestartWithAd(): Promise<void> {
+    if (this.isShowingAd) return Promise.resolve();
+    this.restartAllowed = false;
+
+    // Sequence:
+    // 1. gameplayStop (inside showCommercial)
+    // 2. mute audio
+    // 3. disable input
+    // 4. commercialBreak
+    // 5. restore input
+    // 6. restore audio
+    // 7. startNewGame -> gameplayStart
+    return PokiService.showCommercial(
       () => {
-        this.isShowingAd = true;
         this.audioManager.muteForAd();
+        this.disableGameplayInput();
       },
       () => {
+        this.enableGameplayInput();
         this.audioManager.unmuteAfterAd();
-        this.isShowingAd = false;
-        PokiService.gameplayStart();
         this.startNewGame();
       }
     );
   }
 
-  private requestReviveWithAd(): void {
-    if (this.isShowingAd || !this.canReviveThisSession) return;
+  private requestReviveWithAd(): Promise<boolean> {
+    if (this.isShowingAd || !this.canReviveThisSession) return Promise.resolve(false);
+    this.restartAllowed = false;
     this.recordMetric('revive_ad_requested', { wave: this.currentWave });
-    PokiService.showRewarded(
+
+    return PokiService.showRewarded(
       () => {
-        this.isShowingAd = true;
         this.audioManager.muteForAd();
+        this.disableGameplayInput();
       },
       () => {
+        this.enableGameplayInput();
         this.audioManager.unmuteAfterAd();
-        this.isShowingAd = false;
       }
     ).then((rewardSuccess) => {
       if (rewardSuccess) {
         this.performRevive();
+      } else {
+        // Canceled or failed ad: allow restarting without granting an undeserved revive
+        this.restartAllowed = true;
       }
+      return rewardSuccess;
     });
   }
 

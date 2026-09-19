@@ -4,6 +4,17 @@ Todas as mudanças notáveis deste projeto são documentadas neste arquivo de ac
 
 ---
 
+## [5.4.4] — 2026-09-19
+### Adequação Técnica Poki SDK & Hardening de Ciclo de Vida
+- **Ciclo de Vida Estrito e Idempotente (Poki SDK):** Implementada máquina de estados com guarda booleana interna em `PokiService` banindo 100% de chamadas consecutivas redundantes (`gameplayStart -> gameplayStart` e `gameplayStop -> gameplayStop`).
+- **Suspensão Total de Input Durante Anúncios:** Entrada de controle no Phaser (`this.input.enabled = false`) e limpeza de ponteiros/joysticks ativadas antes do anúncio comercial/premiado e restauradas estritamente após a conclusão.
+- **Silenciamento e Restauração de Áudio Sem Perda de Estado:** `muteForAd` e `unmuteAfterAd` acionam o `masterGainNode` em tempo real mantendo o volume configurado e preservando o estado de mudo manual do usuário.
+- **Pipeline Centralizado de Reinício:** Unificado o fluxo de restart (`triggerRestart`) em botões de UI, tecla Space e tecla R com trava imediata de cooldown (350ms), eliminando disparos duplicados ou prematuros.
+- **Adesão a Sandboxes e Modo Anônimo:** Camada de fallback volátil em memória (`memoryStatsFallback`) que mantém o progresso e desbloqueios da sessão mesmo quando o `localStorage` lança exceções de segurança.
+- **Desduplicação de Prevenção de Scroll:** Removido listener redundante de `keydown` em `main.ts`, centralizando o bloqueio de rolagem no inline de `index.html` e `capture` nativo do Phaser.
+
+---
+
 ## [5.4.3] — 2026-09-19
 ### Balanceamento & Correção (Chefe Dreadnought)
 - **Calibração de HP da Fortaleza Dreadnought:** HP base na Onda 5 reduzido de 6 para 4 (`baseHp: 4`), permitindo um ritmo de combate justo e gratificante.

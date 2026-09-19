@@ -22,6 +22,16 @@ export class PokiService {
   private static isInitialized = false;
   private static isAdBlockerActive = false;
   private static isDevelopment = false;
+  private static isGameplayActive = false;
+  private static isLoadingFinished = false;
+
+  private static recordEvent(name: string): void {
+    if (typeof window !== 'undefined') {
+      const win = window as unknown as { __POKI_EVENTS__?: string[] };
+      if (!win.__POKI_EVENTS__) win.__POKI_EVENTS__ = [];
+      win.__POKI_EVENTS__.push(name);
+    }
+  }
 
   public static async init(): Promise<void> {
     if (this.isInitialized) return;
@@ -71,6 +81,10 @@ export class PokiService {
   }
 
   public static gameLoadingFinished(): void {
+    if (this.isLoadingFinished) return;
+    this.isLoadingFinished = true;
+    this.recordEvent('gameLoadingFinished');
+
     if (typeof window !== 'undefined' && window.PokiSDK) {
       try {
         window.PokiSDK.gameLoadingFinished();
@@ -81,6 +95,13 @@ export class PokiService {
   }
 
   public static gameplayStart(): void {
+    if (this.isGameplayActive) {
+      // Guard against duplicate gameplayStart -> gameplayStart
+      return;
+    }
+    this.isGameplayActive = true;
+    this.recordEvent('gameplayStart');
+
     if (typeof window !== 'undefined' && window.PokiSDK) {
       try {
         window.PokiSDK.gameplayStart();
@@ -91,6 +112,13 @@ export class PokiService {
   }
 
   public static gameplayStop(): void {
+    if (!this.isGameplayActive) {
+      // Guard against duplicate gameplayStop -> gameplayStop
+      return;
+    }
+    this.isGameplayActive = false;
+    this.recordEvent('gameplayStop');
+
     if (typeof window !== 'undefined' && window.PokiSDK) {
       try {
         window.PokiSDK.gameplayStop();
@@ -98,6 +126,10 @@ export class PokiService {
         console.warn('[PokiService] gameplayStop error:', e);
       }
     }
+  }
+
+  public static getIsGameplayActive(): boolean {
+    return this.isGameplayActive;
   }
 
   /**
@@ -112,13 +144,12 @@ export class PokiService {
     try {
       this.gameplayStop();
       if (onBeforeAd) onBeforeAd();
+      this.recordEvent('commercialBreak');
 
-      // Anúncios comerciais rodam EXCLUSIVAMENTE dentro do portal Poki
-      if (this.isPokiEnvironment() && typeof window !== 'undefined' && window.PokiSDK) {
+      if (typeof window !== 'undefined' && window.PokiSDK) {
         await window.PokiSDK.commercialBreak();
       } else {
-        // Fora do Poki (Vercel, GitHub Pages, Localhost): zero anúncios!
-        await new Promise((res) => setTimeout(res, 30));
+        await new Promise((res) => setTimeout(res, 50));
       }
     } catch (err) {
       console.warn('[PokiService] commercialBreak error or skipped:', err);
@@ -140,14 +171,13 @@ export class PokiService {
     try {
       this.gameplayStop();
       if (onBeforeAd) onBeforeAd();
+      this.recordEvent('rewardedBreak');
 
-      // Anúncios premiados rodam EXCLUSIVAMENTE dentro do portal Poki
-      if (this.isPokiEnvironment() && typeof window !== 'undefined' && window.PokiSDK) {
+      if (typeof window !== 'undefined' && window.PokiSDK) {
         success = await window.PokiSDK.rewardedBreak();
       } else {
-        // Fora do Poki (Vercel, GitHub Pages, Localhost): concede a recompensa imediatamente sem anúncios!
-        console.log('[PokiService] Outside Poki domain: rewarded break auto-resolved with success.');
-        await new Promise((res) => setTimeout(res, 30));
+        console.log('[PokiService] PokiSDK not loaded on window: rewarded break auto-resolved.');
+        await new Promise((res) => setTimeout(res, 50));
         success = true;
       }
     } catch (err) {
@@ -156,6 +186,6 @@ export class PokiService {
     } finally {
       if (onAfterAd) onAfterAd();
     }
-    return success;
+    return !!success;
   }
 }

@@ -2,16 +2,8 @@ import Phaser from 'phaser';
 import { GameScene } from './GameScene';
 import { TuningConfig } from './TuningConfig';
 
-// Poki SDK Compliance: Prevent scrolling on space and arrow keys across the portal
-window.addEventListener(
-  'keydown',
-  (ev: KeyboardEvent) => {
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(ev.code) || ev.keyCode === 32) {
-      ev.preventDefault();
-    }
-  },
-  { passive: false }
-);
+// Note: Keydown scroll prevention for Space and Arrow keys is already registered inline in index.html
+// and captured by Phaser below to avoid duplicate event listeners across the portal.
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
