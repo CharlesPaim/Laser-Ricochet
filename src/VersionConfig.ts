@@ -8,10 +8,29 @@ export interface PatchNoteEntry {
   };
 }
 
-export const GAME_VERSION = 'v5.4.0';
+export const GAME_VERSION = 'v5.4.1';
 export const GAME_BUILD_DATE = '2026-09-19';
 
 export const PATCH_NOTES: PatchNoteEntry[] = [
+  {
+    version: 'v5.4.1',
+    codename: 'Nemesis Clash Break & Balanced Duel',
+    date: '2026-09-19',
+    highlights: {
+      en: [
+        'Clash Break: Lethal bolts (Tier 3+) now shatter Nemesis scythe guard on impact, guaranteeing Guard Break!',
+        'Rebalanced Nemesis HP to 3 on Wave 10 (3 clean rally wins to defeat).',
+        'Extended vulnerable recover window to 1500ms for solid counter-attacks.',
+        'Capped rally velocity to 750 px/s for responsive reflex play on mobile and desktop.',
+      ],
+      pt: [
+        'Clash Break: Disparos letais (Tier 3+) agora estilhaçam a foice do Nemesis no impacto, garantindo Quebra de Guarda!',
+        'HP do Nemesis balanceado para 3 na Onda 10 (3 ralis perfeitos para vencer).',
+        'Janela de vulnerabilidade estendida para 1500ms para contra-ataques sólidos.',
+        'Velocidade máxima de rali limitada a 750 px/s para reflexos precisos em celular e PC.',
+      ],
+    },
+  },
   {
     version: 'v5.4.0',
     codename: 'Shadow Deflector & Deadly Rally',
@@ -19,15 +38,13 @@ export const PATCH_NOTES: PatchNoteEntry[] = [
     highlights: {
       en: [
         'New Mirror Boss: Shadow Deflector (Nemesis) on Waves 10, 20, 30...',
-        'Deadly Rally Mechanic: Bolts accelerate +16% per clash up to 1150 px/s with 4-tier chromatic shift.',
-        'Guard Break: Lethal bolts (Tier 3+) stagger Nemesis for 950ms and deal hull damage.',
+        'Deadly Rally Mechanic: Bolts accelerate per clash with 4-tier chromatic shift.',
         'Procedural Web Audio: 6 new inharmonic FM synthesizers for boss clash and telemetry.',
         'Rapid playtest: Added URL parameter support (?wave=10 or ?wave=5).',
       ],
       pt: [
         'Novo Chefe de Espelho: Shadow Deflector (Nemesis) nas Ondas 10, 20, 30...',
-        'Mecânica Deadly Rally: Disparos aceleram +16% por clash até 1150 px/s com transição de 4 cores.',
-        'Quebra de Guarda: Disparos letais (Tier 3+) atordoam o Nemesis por 950ms e causam dano.',
+        'Mecânica Deadly Rally: Disparos aceleram a cada troca com transição de 4 cores.',
         'Web Audio Procedural: 6 novos sintetizadores FM inarmônicos para clash e telemetria.',
         'Playtest rápido: Suporte a parâmetro de URL (?wave=10 ou ?wave=5).',
       ],

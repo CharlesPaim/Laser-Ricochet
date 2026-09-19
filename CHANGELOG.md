@@ -4,6 +4,15 @@ Todas as mudanças notáveis deste projeto são documentadas neste arquivo de ac
 
 ---
 
+## [5.4.1] — 2026-09-19
+### Corrigido
+- **Clash Break na Lâmina do Nemesis:** Ao rebater projéteis em Tier letal (Tier 3+ / 3º round de rally), o impacto direto contra a foice/lâmina do Nemesis agora quebra sua guarda (Guard Break) instantaneamente em vez de ricochetear infinitamente, causando 1 de dano e forçando estado de atordoamento (`recover`).
+- **Balanceamento de HP do Chefe (Onda 10):** HP calibrado para 3 pontos na Onda 10 (em vez de 5), exigindo 3 trocas letais completas e limpas para a vitória.
+- **Janela de Punição Ampliada:** Duração do atordoamento (`recoverMs`) aumentada de 950ms para 1500ms, permitindo que lasers refletidos durante a recuperação causem dano direto adicional à carcaça desprotegida.
+- **Calibração de Velocidade de Rally:** Teto máximo de velocidade de Deadly Rally reduzido de 1150 px/s para 750 px/s (com rampa de 1.15x por batida), garantindo tempo de reação ágil e jogabilidade justa em telas mobile e desktop.
+
+---
+
 ## [5.4.0] — 2026-09-19
 ### Adicionado
 - **Chefe Shadow Deflector (Nemesis):** Aparição alternada nas Ondas 10, 20, 30... em duelo de espelho 1v1 com lâmina orbital própria, dashes de alta velocidade e contra-ataques precisos.

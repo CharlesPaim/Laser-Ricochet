@@ -1918,7 +1918,7 @@ export class GameScene extends Phaser.Scene {
     Object.assign(n, GameScene.blankNemesis());
     n.active = true;
     n.tier = tier;
-    n.maxHp = 5 + (tier - 1) * 3;
+    n.maxHp = 3 + (tier - 1) * 2;
     n.hp = n.maxHp;
 
     const cx = TuningConfig.arena.centerX;
@@ -2186,7 +2186,8 @@ export class GameScene extends Phaser.Scene {
 
   private hitNemesis(laser: LaserOrb, now: number): void {
     const n = this.nemesis;
-    const lethal = (laser.rally || 0) >= TuningConfig.nemesis.rallyLethalTier;
+    const isRecovering = n.state === 'recover';
+    const lethal = (laser.rally || 0) >= TuningConfig.nemesis.rallyLethalTier || isRecovering;
     if (!lethal) {
       laser.vx = -laser.vx * 0.5;
       laser.vy = -laser.vy * 0.5;
@@ -2200,7 +2201,7 @@ export class GameScene extends Phaser.Scene {
     const idx = this.lasers.indexOf(laser);
     if (idx !== -1) this.lasers.splice(idx, 1);
 
-    const dmg = 1 + Math.floor(((laser.rally || 3) - 3) / 2);
+    const dmg = 1;
     n.hp -= dmg;
     n.hitFlash = 1;
     n.state = 'recover';
@@ -3616,11 +3617,19 @@ export class GameScene extends Phaser.Scene {
         if (laser.rallyLock && laser.rallyLock > 0) {
           laser.rallyLock--;
         } else {
+          const isLethal = (laser.rally || 0) >= TuningConfig.nemesis.rallyLethalTier;
+
           // Check collision with Nemesis Scythe Blade (if not in recover state)
           if (this.nemesis.state !== 'recover') {
             const ends = this.nemesisEnds();
             const dBlade = this.distPointToSegment(laser.x, laser.y, ends.ax, ends.ay, ends.bx, ends.by);
             if (dBlade <= laser.radius + TuningConfig.nemesis.bladeThickness / 2 + 8) {
+              if (isLethal) {
+                // CLASH BREAK (Option A): Lethal bolt (Tier 3+) overpowers and shatters the Nemesis scythe guard!
+                this.hitNemesis(laser, performance.now());
+                continue;
+              }
+
               const segLen = Math.hypot(ends.bx - ends.ax, ends.by - ends.ay) || 1;
               const t = Phaser.Math.Clamp(
                 ((laser.x - ends.ax) * (ends.bx - ends.ax) + (laser.y - ends.ay) * (ends.by - ends.ay)) / (segLen * segLen),
@@ -3634,7 +3643,7 @@ export class GameScene extends Phaser.Scene {
 
           // Check collision with Nemesis Chassis Hull
           const distToNemesis = Math.hypot(laser.x - this.nemesis.x, laser.y - this.nemesis.y);
-          if (distToNemesis <= laser.radius + 28) {
+          if (distToNemesis <= laser.radius + 32) {
             this.hitNemesis(laser, performance.now());
             continue;
           }
