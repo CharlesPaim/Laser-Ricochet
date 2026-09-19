@@ -8,10 +8,27 @@ export interface PatchNoteEntry {
   };
 }
 
-export const GAME_VERSION = 'v5.4.1';
+export const GAME_VERSION = 'v5.4.2';
 export const GAME_BUILD_DATE = '2026-09-19';
 
 export const PATCH_NOTES: PatchNoteEntry[] = [
+  {
+    version: 'v5.4.2',
+    codename: 'Nemesis Hull Absorption & Anti-Freeze Safeguard',
+    date: '2026-09-19',
+    highlights: {
+      en: [
+        'Hull Absorption: Non-lethal bolts hitting Nemesis chassis are cleanly dissipated by armor, preventing infinite velocity decays.',
+        'Anti-Freeze Safeguard: Automated cleanup of anomalous low-velocity projectiles ensures zero frozen bolts on screen.',
+        'Guaranteed Attack Cadence: Nemesis reliably engages new strikes every 1.4s–2.2s when no rally is active.',
+      ],
+      pt: [
+        'Absorção de Blindagem: Disparos não-letais na carcaça do Nemesis são dissipados pelo escudo, eliminando desaceleração infinita.',
+        'Safeguard Anti-Congelamento: Limpeza autônoma de projéteis de baixa velocidade garante zero tiros parados na arena.',
+        'Cadência Ofensiva Garantida: Nemesis retoma novos ataques a cada 1.4s–2.2s sempre que não houver rali ativo.',
+      ],
+    },
+  },
   {
     version: 'v5.4.1',
     codename: 'Nemesis Clash Break & Balanced Duel',

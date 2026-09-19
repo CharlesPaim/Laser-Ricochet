@@ -4,6 +4,14 @@ Todas as mudanças notáveis deste projeto são documentadas neste arquivo de ac
 
 ---
 
+## [5.4.2] — 2026-09-19
+### Corrigido
+- **Dissipação na Blindagem do Nemesis:** Disparos não-letais que atingem a carcaça/chassi do Nemesis agora são absorvidos e dissipados no impacto (`GUARDED`) com faíscas metálicas, eliminando o loop de desaceleração infinita ("efeito Zeno") e a presença de tiros residuais parados na arena.
+- **Safeguard Anti-Congelamento de Projéteis:** Adicionada rotina de descarte automático para projéteis com velocidade anômala abaixo de 45 px/s, garantindo zero projéteis congelados ou órfãos no canvas.
+- **Cadência de Tiro Confiável do Chefe:** Remoção de trava estática em `rallyInFlight()` e garantia de avanço para novo disparo em 1.4s a 2.2s sempre que não houver rali em curso, impedindo que o chefe fique vagando em órbita sem atacar.
+
+---
+
 ## [5.4.1] — 2026-09-19
 ### Corrigido
 - **Clash Break na Lâmina do Nemesis:** Ao rebater projéteis em Tier letal (Tier 3+ / 3º round de rally), o impacto direto contra a foice/lâmina do Nemesis agora quebra sua guarda (Guard Break) instantaneamente em vez de ricochetear infinitamente, causando 1 de dano e forçando estado de atordoamento (`recover`).

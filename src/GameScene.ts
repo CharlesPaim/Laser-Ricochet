@@ -1992,7 +1992,7 @@ export class GameScene extends Phaser.Scene {
 
         n.radius += Math.sin(now * 0.0021) * 26 * dt;
         n.radius = Phaser.Math.Clamp(n.radius, TuningConfig.nemesis.orbitMin, TuningConfig.nemesis.orbitMax);
-        if (now >= n.stateUntil) {
+        if (now >= n.stateUntil || (!this.rallyInFlight() && now - n.nextFireTime > 2200)) {
           this.nemesisEnterDash(now);
         }
         break;
@@ -2025,9 +2025,9 @@ export class GameScene extends Phaser.Scene {
       }
       case 'strike': {
         if (now >= n.stateUntil) {
-          if (!this.rallyInFlight() && now >= n.nextFireTime) {
+          if (!this.rallyInFlight()) {
             this.nemesisFire(now);
-            n.nextFireTime = now + (1500 + Math.random() * 900) / aggression;
+            n.nextFireTime = now + (1400 + Math.random() * 800) / aggression;
           }
           n.state = 'stalk';
           const stalkMin = TuningConfig.nemesis.stalkMin;
@@ -2189,12 +2189,13 @@ export class GameScene extends Phaser.Scene {
     const isRecovering = n.state === 'recover';
     const lethal = (laser.rally || 0) >= TuningConfig.nemesis.rallyLethalTier || isRecovering;
     if (!lethal) {
-      laser.vx = -laser.vx * 0.5;
-      laser.vy = -laser.vy * 0.5;
-      laser.rallyLock = 2;
-      this.spawnSparks(laser.x, laser.y, 0x8899aa, 10);
+      // Option A: Non-lethal hull contact is absorbed/dissipated by Nemesis armored chassis!
+      const idx = this.lasers.indexOf(laser);
+      if (idx !== -1) this.lasers.splice(idx, 1);
+      this.spawnSparks(laser.x, laser.y, 0x8899aa, 18);
       this.audioManager.playShieldRicochet();
-      this.spawnFloatingScore(n.x, n.y - 34, 'GUARDED', '#8899aa');
+      this.spawnFloatingScore(n.x, n.y - 34, getLang() === 'en' ? 'GUARDED' : 'BLOQUEADO', '#8899aa');
+      n.nextFireTime = Math.min(n.nextFireTime, now + 1200);
       return;
     }
 
@@ -3136,6 +3137,14 @@ export class GameScene extends Phaser.Scene {
       } else {
         laser.x += laser.vx * dt;
         laser.y += laser.vy * dt;
+      }
+
+      // Safeguard Anti-Freeze (LRN-056): Autodissipate any anomalous or near-zero velocity lasers (< 45 px/s)
+      const currentSpeed = Math.hypot(laser.vx, laser.vy);
+      if (currentSpeed < 45) {
+        this.spawnSparks(laser.x, laser.y, 0x00f3ff, 8);
+        this.lasers.splice(i, 1);
+        continue;
       }
 
       if (
