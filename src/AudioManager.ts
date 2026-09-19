@@ -901,9 +901,9 @@ export class AudioManager {
     if (!this.ctx || !this.bgmGain || this.bgmMode === 'off') return;
     this.isBgmPaused = false;
     const now = this.ctx.currentTime;
-    const targetGain = this.bgmMode === 'boss'
-      ? TuningConfig.audio.bgmBossVolume * TuningConfig.audio.masterVolume
-      : TuningConfig.audio.bgmRegularVolume * TuningConfig.audio.masterVolume;
+    const targetGain = (this.bgmMode === 'boss'
+      ? TuningConfig.audio.bgmBossVolume
+      : TuningConfig.audio.bgmRegularVolume) * this.bgmVolume;
     this.bgmGain.gain.cancelScheduledValues(now);
     this.bgmGain.gain.setValueAtTime(0.0001, now);
     this.bgmGain.gain.linearRampToValueAtTime(targetGain, now + 0.35);

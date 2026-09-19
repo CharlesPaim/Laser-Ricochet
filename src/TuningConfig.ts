@@ -110,8 +110,8 @@ export const TuningConfig = {
     masterVolume: 0.8,
     sfxVolume: 0.85,
     ambientHumVolume: 0.035, // Very subtle background spatial drone
-    bgmRegularVolume: 0.16,  // Synthwave combat bassline & arp volume
-    bgmBossVolume: 0.22,     // High-tension industrial boss music volume
+    bgmRegularVolume: 0.36,  // Synthwave combat bassline & arp volume (amplificado de 0.16 para 0.36)
+    bgmBossVolume: 0.50,     // High-tension industrial boss music volume (amplificado de 0.22 para 0.50)
     bgmRegularBpm: 120,
     bgmBossBpm: 138,
   },
