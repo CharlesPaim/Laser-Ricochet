@@ -8,10 +8,27 @@ export interface PatchNoteEntry {
   };
 }
 
-export const GAME_VERSION = 'v5.4.5';
+export const GAME_VERSION = 'v5.4.6';
 export const GAME_BUILD_DATE = '2026-09-19';
 
 export const PATCH_NOTES: PatchNoteEntry[] = [
+  {
+    version: 'v5.4.6',
+    codename: 'Poki Inspector Quality & Commercial Timing Compliance',
+    date: '2026-09-19',
+    highlights: {
+      en: [
+        'Clean Build Compliance: Debug parameter ?wave=X strictly disabled in Poki production and Poki Inspector environments.',
+        'Direct Gameplay Ad Return: Mini-Rogue card selection now opens BEFORE post-boss commercial break, guaranteeing commercialBreak always returns directly into active combat.',
+        'Zero Ad Menus: Strictly conforms to Poki rule banning commercialBreak transitions that lead into selection menus.',
+      ],
+      pt: [
+        'Conformidade Clean Build: Parâmetro de teste ?wave=X estritamente inativo em ambientes de produção Poki e Poki Inspector.',
+        'Retorno Direto ao Gameplay: Seleção de melhorias Mini-Rogue agora abre ANTES do comercial de chefe, garantindo que o anúncio retorne 100% direto ao combate ativo.',
+        'Zero Menus Pós-Anúncio: Conformidade estrita com a regra da Poki que proíbe anúncios comerciais de terminarem em menus de seleção.',
+      ],
+    },
+  },
   {
     version: 'v5.4.5',
     codename: 'Staging Ad Suppression & Poki Inspector Targeting',

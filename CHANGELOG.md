@@ -4,6 +4,13 @@ Todas as mudanças notáveis deste projeto são documentadas neste arquivo de ac
 
 ---
 
+## [5.4.6] — 2026-09-19
+### Conformidade Poki Inspector & Timing de Anúncios Comerciais
+- **Isolamento de Parâmetros de Debug (Clean Build):** Parâmetro de URL `?wave=X` estritamente isolado atrás de `!PokiService.isPokiEnvironment()`, impedindo saltos de fase arbitrários em produção Poki ou no Poki Inspector, atendendo à política oficial de Clean Build.
+- **Timing Estrito de commercialBreak Pós-Chefe:** Reordenado o fluxo para que, caso a vitória de um chefe coincida com a janela de Mini-Rogue (ex: Onda 15), a seleção de cartas ocorra antes do anúncio comercial. Ao término do comercial, o jogo invoca `gameplayStart()` e transita diretamente ao combate ativo (`setupWave`), eliminando qualquer término de anúncio que resulte em menus de seleção.
+
+---
+
 ## [5.4.5] — 2026-09-19
 ### Supressão de Anúncios em Staging (Vercel) & Poki Inspector
 - **Supressão Total de Anúncios Fora da Poki:** Intersticiais (`commercialBreak`) e anúncios premiados (`rewardedBreak`) são estritamente contornados sem disparar a rede de anúncios quando executados fora do domínio oficial da Poki (`poki.com`, `poki-gdn.com`), garantindo playtests 100% limpos e livres de interrupções no Vercel, GitHub Pages e localhost.

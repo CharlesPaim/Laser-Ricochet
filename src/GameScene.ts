@@ -391,6 +391,7 @@ export class GameScene extends Phaser.Scene {
   private isMiniRogueOpen: boolean = false;
   private miniRogueTimerMs: number = 0;
   private pendingNextWave: number = 2;
+  private pendingPostMiniRogueCommercial: boolean = false;
   private activeModifiers: string[] = [];
   private miniRogueCards: Array<{
     id: string;
@@ -1609,7 +1610,8 @@ export class GameScene extends Phaser.Scene {
     this.audioManager.setBgmMode('regular');
     this.coreHealth = TuningConfig.arena.coreMaxHealth;
     this.currentWave = 1;
-    if (typeof window !== 'undefined' && window.location && window.location.search) {
+    this.pendingPostMiniRogueCommercial = false;
+    if (!PokiService.isPokiEnvironment() && typeof window !== 'undefined' && window.location && window.location.search) {
       try {
         const urlParams = new URLSearchParams(window.location.search);
         const waveParam = urlParams.get('wave');
@@ -2521,8 +2523,26 @@ export class GameScene extends Phaser.Scene {
     this.recordMetric('mini_rogue_selected', { modifier: modifierId, wave: this.currentWave });
     this.currentWave = this.pendingNextWave;
     this.waveTransitioning = false;
-    this.setupWave(this.currentWave);
-    this.updateUI();
+
+    if (this.pendingPostMiniRogueCommercial) {
+      this.pendingPostMiniRogueCommercial = false;
+      PokiService.showCommercial(
+        () => {
+          this.audioManager.muteForAd();
+          this.disableGameplayInput();
+        },
+        () => {
+          this.enableGameplayInput();
+          this.audioManager.unmuteAfterAd();
+          PokiService.gameplayStart();
+          this.setupWave(this.currentWave);
+          this.updateUI();
+        }
+      );
+    } else {
+      this.setupWave(this.currentWave);
+      this.updateUI();
+    }
   }
 
   private clearMiniRogueDom(): void {
@@ -3929,33 +3949,39 @@ export class GameScene extends Phaser.Scene {
     this.time.delayedCall(1500, () => {
       this.bannerText.setVisible(false);
       const nextW = this.currentWave + 1;
+      const isMiniRogueWave = this.currentWave % TuningConfig.miniRogue.waveInterval === 0;
 
-      const proceed = () => {
-        if (this.currentWave % TuningConfig.miniRogue.waveInterval === 0) {
+      // Poki SDK: Commercial break pacing valley after Boss wave victory (Waves 5, 10, 15...)
+      if (isBoss) {
+        if (isMiniRogueWave) {
+          // If Mini-Rogue selection coincides with Boss victory, Mini-Rogue selection happens BEFORE commercialBreak
+          // so commercialBreak always leads directly into gameplay (Poki SDK compliance)
+          this.pendingPostMiniRogueCommercial = true;
+          this.openMiniRogueSelection(nextW);
+        } else {
+          PokiService.showCommercial(
+            () => {
+              this.audioManager.muteForAd();
+              this.disableGameplayInput();
+            },
+            () => {
+              this.enableGameplayInput();
+              this.audioManager.unmuteAfterAd();
+              PokiService.gameplayStart();
+              this.currentWave = nextW;
+              this.waveTransitioning = false;
+              this.setupWave(this.currentWave);
+            }
+          );
+        }
+      } else {
+        if (isMiniRogueWave) {
           this.openMiniRogueSelection(nextW);
         } else {
           this.currentWave = nextW;
           this.waveTransitioning = false;
           this.setupWave(this.currentWave);
         }
-      };
-
-      // Poki SDK: Commercial break pacing valley after Boss wave victory (Waves 5, 10, 15...)
-      if (isBoss) {
-        PokiService.showCommercial(
-          () => {
-            this.audioManager.muteForAd();
-            this.disableGameplayInput();
-          },
-          () => {
-            this.enableGameplayInput();
-            this.audioManager.unmuteAfterAd();
-            PokiService.gameplayStart();
-            proceed();
-          }
-        );
-      } else {
-        proceed();
       }
     });
   }
