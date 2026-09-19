@@ -62,6 +62,14 @@ export class PokiService {
     this.isInitialized = true;
   }
 
+  public static isPokiEnvironment(): boolean {
+    if (typeof window === 'undefined') return false;
+    const host = window.location.hostname;
+    const isPokiHost = host.endsWith('poki.com') || host.endsWith('poki-gdn.com');
+    const isPokiReferrer = typeof document !== 'undefined' && (document.referrer.includes('poki.com') || document.referrer.includes('poki-gdn.com'));
+    return isPokiHost || isPokiReferrer;
+  }
+
   public static gameLoadingFinished(): void {
     if (typeof window !== 'undefined' && window.PokiSDK) {
       try {
@@ -105,11 +113,12 @@ export class PokiService {
       this.gameplayStop();
       if (onBeforeAd) onBeforeAd();
 
-      if (typeof window !== 'undefined' && window.PokiSDK) {
+      // Anúncios comerciais rodam EXCLUSIVAMENTE dentro do portal Poki
+      if (this.isPokiEnvironment() && typeof window !== 'undefined' && window.PokiSDK) {
         await window.PokiSDK.commercialBreak();
       } else {
-        // Fallback simulation for local dev
-        await new Promise((res) => setTimeout(res, 60));
+        // Fora do Poki (Vercel, GitHub Pages, Localhost): zero anúncios!
+        await new Promise((res) => setTimeout(res, 30));
       }
     } catch (err) {
       console.warn('[PokiService] commercialBreak error or skipped:', err);
@@ -132,16 +141,13 @@ export class PokiService {
       this.gameplayStop();
       if (onBeforeAd) onBeforeAd();
 
-      if (typeof window !== 'undefined' && window.PokiSDK) {
+      // Anúncios premiados rodam EXCLUSIVAMENTE dentro do portal Poki
+      if (this.isPokiEnvironment() && typeof window !== 'undefined' && window.PokiSDK) {
         success = await window.PokiSDK.rewardedBreak();
-        if (this.isDevelopment) {
-          console.log('[PokiService Dev] Running on localhost. Granting rewarded break for testing.');
-          success = true;
-        }
       } else {
-        // In local development / mock, always grant the reward
-        console.log('[PokiService Dev] Rewarded video simulated. Granting reward.');
-        await new Promise((res) => setTimeout(res, 60));
+        // Fora do Poki (Vercel, GitHub Pages, Localhost): concede a recompensa imediatamente sem anúncios!
+        console.log('[PokiService] Outside Poki domain: rewarded break auto-resolved with success.');
+        await new Promise((res) => setTimeout(res, 30));
         success = true;
       }
     } catch (err) {

@@ -17,6 +17,7 @@ export const translations: Record<SupportedLang, Record<string, string>> = {
     // Title & Menus
     game_title: 'LASER RICOCHET',
     game_subtitle: 'CLICK OR PRESS SPACE TO PLAY',
+    btn_start_game: '▶ START GAME',
     wallet_fragments: '💎 {count} PLASMA FRAGMENTS',
     instructions_1: 'DESKTOP: Mouse to aim | Click or Space to Parry',
     instructions_2: 'MOBILE: Left thumb steers 360° & distance | Right thumb [⚡ PARRY]',
@@ -118,8 +119,8 @@ export const translations: Record<SupportedLang, Record<string, string>> = {
     game_over_title: 'CORE DESTROYED!',
     game_over_new_record: '★ NEW PERSONAL RECORD! ★',
     game_over_stats: 'Wave Reached: {wave} | Score: {score}\nMax Combo: {combo} | Parries: {parries} | Bosses: {bosses}\nPlasma Fragments Collected: {fragments}',
-    btn_revive: '🎬 REVIVE CORE (+2 HP)',
-    btn_restart: '[ ↻ RESTART SYSTEM ]',
+    btn_revive: '🎬 REVIVE (+2 HP)',
+    btn_restart: '↻ RESTART MISSION',
     restart_hint: 'PRESS R OR SPACE TO RESTART',
 
     // Help Modal
@@ -146,6 +147,7 @@ export const translations: Record<SupportedLang, Record<string, string>> = {
     // Title & Menus
     game_title: 'LASER RICOCHET',
     game_subtitle: 'CLIQUE OU PRESSIONE ESPAÇO PARA JOGAR',
+    btn_start_game: '▶ INICIAR JOGO',
     wallet_fragments: '💎 {count} FRAGMENTOS DE PLASMA',
     instructions_1: 'DESKTOP: Mouse para mirar | Clique ou Espaço para Parry',
     instructions_2: 'CELULAR: Polegar esquerdo mira 360° e distância | Polegar direito [⚡ PARRY]',
@@ -247,8 +249,8 @@ export const translations: Record<SupportedLang, Record<string, string>> = {
     game_over_title: 'NÚCLEO DESTRUÍDO!',
     game_over_new_record: '★ NOVO RECORDE PESSOAL! ★',
     game_over_stats: 'Fase Alcançada: {wave} | Pontos: {score}\nMaior Combo: {combo} | Parries: {parries} | Chefes: {bosses}\nFragmentos de Plasma Coletados: {fragments}',
-    btn_revive: '🎬 REVIVER NÚCLEO (+2 HP)',
-    btn_restart: '[ ↻ REINICIAR SISTEMA ]',
+    btn_revive: '🎬 REVIVER (+2 HP)',
+    btn_restart: '↻ REINICIAR MISSÃO',
     restart_hint: 'PRESSIONE R OU ESPAÇO PARA REINICIAR',
 
     // Help Modal

@@ -168,10 +168,11 @@ export class HudRenderer {
     g: Phaser.GameObjects.Graphics,
     cx: number,
     cy: number,
-    isNewHighScore: boolean
+    isNewHighScore: boolean,
+    canRevive: boolean = true
   ): void {
     const cardW = 580;
-    const cardH = 340;
+    const cardH = 360;
     const cardX = cx - cardW / 2;
     const cardY = cy - cardH / 2 - 10;
     const chamfer = 18;
@@ -197,6 +198,34 @@ export class HudRenderer {
     // Separador holográfico interno
     g.lineStyle(1, 0x00f3ff, 0.28);
     g.lineBetween(cardX + 28, cardY + 74, cardX + cardW - 28, cardY + 74);
+
+    // Caixas diegéticas de botão arcade (Revive & Restart)
+    const btnW = 320;
+    const btnH = 42;
+    const btnX = cx - btnW / 2;
+
+    if (canRevive) {
+      // 1. Botão Arcade Reviver (Ciano com chanfro e halo)
+      const rY = 309;
+      g.fillStyle(0x0c223c, 0.9);
+      g.fillRoundedRect(btnX, rY, btnW, btnH, 8);
+      g.lineStyle(2, 0x00f3ff, 0.9);
+      g.strokeRoundedRect(btnX, rY, btnW, btnH, 8);
+
+      // 2. Botão Arcade Reiniciar (Âmbar com chanfro e halo)
+      const resY = 359;
+      g.fillStyle(0x2b1e06, 0.9);
+      g.fillRoundedRect(btnX, resY, btnW, btnH, 8);
+      g.lineStyle(2, 0xffea00, 0.9);
+      g.strokeRoundedRect(btnX, resY, btnW, btnH, 8);
+    } else {
+      // Apenas Botão Arcade Reiniciar centralizado
+      const resY = 334;
+      g.fillStyle(0x2b1e06, 0.9);
+      g.fillRoundedRect(btnX, resY, btnW, btnH, 8);
+      g.lineStyle(2, 0xffea00, 0.9);
+      g.strokeRoundedRect(btnX, resY, btnW, btnH, 8);
+    }
   }
 
   public static renderPauseCard(
@@ -239,9 +268,9 @@ export class HudRenderer {
     cy: number
   ): void {
     const sCardW = 620;
-    const sCardH = 290;
+    const sCardH = 340;
     const sCardX = cx - sCardW / 2;
-    const sCardY = cy - sCardH / 2 + 35;
+    const sCardY = cy - sCardH / 2 + 50;
     const sChamfer = 16;
 
     const sPoly = [
@@ -263,7 +292,17 @@ export class HudRenderer {
     // Linhas decorativas de scanline
     g.lineStyle(1, 0x00f3ff, 0.2);
     g.lineBetween(sCardX + 24, sCardY + 54, sCardX + sCardW - 24, sCardY + 54);
-    g.lineBetween(sCardX + 24, sCardY + sCardH - 50, sCardX + sCardW - 24, sCardY + sCardH - 50);
+
+    // Caixa diegética de botão arcade "INICIAR JOGO / START GAME"
+    const startBtnW = 320;
+    const startBtnH = 46;
+    const startBtnX = cx - startBtnW / 2;
+    const startBtnY = 438;
+
+    g.fillStyle(0x0c253d, 0.95);
+    g.fillRoundedRect(startBtnX, startBtnY, startBtnW, startBtnH, 8);
+    g.lineStyle(2.5, 0x00f3ff, 0.95);
+    g.strokeRoundedRect(startBtnX, startBtnY, startBtnW, startBtnH, 8);
   }
 
   public static renderHelpCard(
@@ -359,10 +398,10 @@ export class HudRenderer {
     g.fillRect(0, 0, width, height);
 
     // Barra de contagem regressiva de auto-select no topo
-    const barW = 420;
-    const barH = 5;
+    const barW = 540;
+    const barH = 6;
     const barX = cx - barW / 2;
-    const barY = 124;
+    const barY = 96;
     g.fillStyle(0x162238, 0.8);
     g.fillRect(barX, barY, barW, barH);
     g.fillStyle(timeRatio > 0.3 ? 0x00f3ff : 0xff2a6d, 0.92);
@@ -386,9 +425,9 @@ export class HudRenderer {
       g.lineStyle(c.isHovered ? 2.5 : 1.5, c.isHovered ? 0xffea00 : 0x00f3ff, c.isHovered ? 1.0 : 0.7);
       g.strokePoints(poly, true);
 
-      // Linha de sotaque interna
+      // Linha de sotaque interna (abaixo do ícone ampliado)
       g.lineStyle(1, c.isHovered ? 0xffea00 : 0x00f3ff, 0.3);
-      g.lineBetween(c.x + 16, c.y + 44, c.x + c.w - 16, c.y + 44);
+      g.lineBetween(c.x + 16, c.y + 60, c.x + c.w - 16, c.y + 60);
     }
   }
 

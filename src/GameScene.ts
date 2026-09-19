@@ -233,6 +233,7 @@ export class GameScene extends Phaser.Scene {
   private coreHudText!: Phaser.GameObjects.Text;
   private bannerText!: Phaser.GameObjects.Text;
   private subText!: Phaser.GameObjects.Text;
+  private startButton!: Phaser.GameObjects.Text;
   private statusText!: Phaser.GameObjects.Text;
   private instructionText!: Phaser.GameObjects.Text;
   private popupText!: Phaser.GameObjects.Text;
@@ -815,6 +816,29 @@ export class GameScene extends Phaser.Scene {
       lineSpacing: 4
     }).setOrigin(0.5).setVisible(true).setDepth(10);
 
+    // Botão Arcade de Iniciar Jogo (Start Game) na tela de título
+    this.startButton = this.add.text(TuningConfig.arena.centerX, 461, t('btn_start_game'), {
+      fontFamily: "'Orbitron', monospace",
+      fontSize: '18px',
+      fontStyle: 'bold',
+      align: 'center',
+      color: '#00f3ff',
+      backgroundColor: '#0c253d',
+      padding: { x: 30, y: 10 },
+    }).setOrigin(0.5).setVisible(true).setInteractive({ useHandCursor: true }).setDepth(10);
+
+    this.startButton.on('pointerover', () => {
+      this.startButton.setColor('#ffea00').setBackgroundColor('#1c385c');
+    });
+    this.startButton.on('pointerout', () => {
+      this.startButton.setColor('#00f3ff').setBackgroundColor('#0c253d');
+    });
+    this.startButton.on('pointerdown', () => {
+      if (!this.isRoundActive) {
+        this.startNewGame();
+      }
+    });
+
     this.popupText = this.add.text(TuningConfig.arena.centerX, 90, '', {
       fontFamily: "'Orbitron', monospace",
       fontSize: '18px',
@@ -864,15 +888,15 @@ export class GameScene extends Phaser.Scene {
       fontStyle: 'bold',
       align: 'center',
       color: '#00f3ff',
-      backgroundColor: '#0c1626',
-      padding: { x: 18, y: 8 },
+      backgroundColor: '#0c223c',
+      padding: { x: 26, y: 10 },
     }).setOrigin(0.5).setVisible(false).setInteractive({ useHandCursor: true }).setDepth(10);
 
     this.reviveButton.on('pointerover', () => {
-      this.reviveButton.setColor('#ffea00').setBackgroundColor('#16253d');
+      this.reviveButton.setColor('#ffea00').setBackgroundColor('#163354');
     });
     this.reviveButton.on('pointerout', () => {
-      this.reviveButton.setColor('#00f3ff').setBackgroundColor('#0c1626');
+      this.reviveButton.setColor('#00f3ff').setBackgroundColor('#0c223c');
     });
     this.reviveButton.on('pointerdown', () => {
       if (!this.isRoundActive && this.canReviveThisSession && !this.isShowingAd) {
@@ -882,19 +906,19 @@ export class GameScene extends Phaser.Scene {
 
     this.restartButton = this.add.text(TuningConfig.arena.centerX, 380, t('btn_restart'), {
       fontFamily: "'Orbitron', monospace",
-      fontSize: '18px',
+      fontSize: '17px',
       fontStyle: 'bold',
       align: 'center',
-      color: '#00f3ff',
-      backgroundColor: '#0c1626',
-      padding: { x: 20, y: 9 },
+      color: '#ffea00',
+      backgroundColor: '#2b1e06',
+      padding: { x: 26, y: 10 },
     }).setOrigin(0.5).setVisible(false).setInteractive({ useHandCursor: true }).setDepth(10);
 
     this.restartButton.on('pointerover', () => {
-      this.restartButton.setColor('#ffea00').setBackgroundColor('#16253d');
+      this.restartButton.setColor('#ffffff').setBackgroundColor('#47340d');
     });
     this.restartButton.on('pointerout', () => {
-      this.restartButton.setColor('#00f3ff').setBackgroundColor('#0c1626');
+      this.restartButton.setColor('#ffea00').setBackgroundColor('#2b1e06');
     });
     this.restartButton.on('pointerdown', () => {
       if (!this.isRoundActive && this.restartAllowed && !this.isShowingAd) {
@@ -1033,7 +1057,7 @@ export class GameScene extends Phaser.Scene {
       this.applyLanguageChange();
     });
 
-    // Botão de Tela Cheia (Fullscreen) para Mobile Web & Poki
+    // Botão de Tela Cheia (Fullscreen) para Staging / GitHub Pages / Vercel (oculto no portal do Poki)
     this.fullscreenBtn = this.add.text(250, TuningConfig.arena.height - 24, t('btn_fullscreen'), {
       fontFamily: "'Orbitron', monospace",
       fontSize: '12px',
@@ -1042,6 +1066,10 @@ export class GameScene extends Phaser.Scene {
       backgroundColor: '#0c1626',
       padding: { x: 10, y: 6 },
     }).setOrigin(0, 1).setDepth(15).setInteractive({ useHandCursor: true });
+
+    if (PokiService.isPokiEnvironment()) {
+      this.fullscreenBtn.setVisible(false);
+    }
 
     this.fullscreenBtn.on('pointerdown', async () => {
       try {
@@ -1194,6 +1222,7 @@ export class GameScene extends Phaser.Scene {
     if (this.langBtn) this.langBtn.setText(t('lang_toggle'));
     if (this.bannerText) this.bannerText.setText(t('game_title'));
     if (this.subText) this.subText.setText(t('game_subtitle'));
+    if (this.startButton) this.startButton.setText(t('btn_start_game'));
     if (this.instructionText) {
       this.instructionText.setText([
         t('instructions_1'),
@@ -1249,6 +1278,10 @@ export class GameScene extends Phaser.Scene {
 
   public updateFullscreenBtnText(): void {
     if (this.fullscreenBtn) {
+      if (PokiService.isPokiEnvironment()) {
+        this.fullscreenBtn.setVisible(false);
+        return;
+      }
       const doc = document as any;
       const isFs = !!(
         doc.fullscreenElement ||
@@ -1395,6 +1428,7 @@ export class GameScene extends Phaser.Scene {
     // Hide Start, Hangar & Game Over UI Elements
     this.bannerText.setVisible(false);
     this.subText.setVisible(false);
+    if (this.startButton) this.startButton.setVisible(false);
     this.instructionText.setVisible(false);
     this.hideHangarUI();
 
@@ -1747,11 +1781,11 @@ export class GameScene extends Phaser.Scene {
     const picked = shuffled.slice(0, 3);
 
     const cx = TuningConfig.arena.centerX;
-    const cardW = 195;
-    const cardH = 175;
-    const gap = 30;
+    const cardW = 230;
+    const cardH = 245;
+    const gap = 25;
     const startX = cx - (3 * cardW + 2 * gap) / 2;
-    const cardY = 154;
+    const cardY = 125;
 
     this.miniRogueCards = picked.map((m, i) => {
       const localizedName = t(`mod_${m.id}_name`) || m.name;
@@ -1773,9 +1807,9 @@ export class GameScene extends Phaser.Scene {
     if (this.statusText) this.statusText.setVisible(false);
     if (this.questHudText) this.questHudText.setVisible(false);
 
-    const title = this.add.text(cx, 96, t('mini_rogue_title'), {
+    const title = this.add.text(cx, 75, t('mini_rogue_title'), {
       fontFamily: "'Orbitron', monospace",
-      fontSize: '18px',
+      fontSize: '22px',
       fontStyle: 'bold',
       color: '#00f3ff',
       align: 'center',
@@ -1783,35 +1817,36 @@ export class GameScene extends Phaser.Scene {
     this.miniRogueUiElements.push(title);
 
     this.miniRogueCards.forEach((c) => {
-      const iconTxt = this.add.text(c.x + c.w / 2, c.y + 26, c.icon, {
-        fontSize: '24px',
+      const iconTxt = this.add.text(c.x + c.w / 2, c.y + 32, c.icon, {
+        fontSize: '36px',
         align: 'center',
       }).setOrigin(0.5).setDepth(30);
 
-      const nameTxt = this.add.text(c.x + c.w / 2, c.y + 60, c.name, {
+      const nameTxt = this.add.text(c.x + c.w / 2, c.y + 84, c.name, {
         fontFamily: "'Orbitron', monospace",
-        fontSize: '14px',
+        fontSize: '16px',
         fontStyle: 'bold',
         color: '#ffea00',
         align: 'center',
       }).setOrigin(0.5).setDepth(30);
 
-      const descTxt = this.add.text(c.x + c.w / 2, c.y + 104, c.description, {
+      const descTxt = this.add.text(c.x + c.w / 2, c.y + 144, c.description, {
         fontFamily: "'Rajdhani', sans-serif",
-        fontSize: '13px',
+        fontSize: '15px',
         fontStyle: '600',
-        color: '#b0d8ff',
+        color: '#d6ecff',
         align: 'center',
+        lineSpacing: 4,
         wordWrap: { width: c.w - 24 },
       }).setOrigin(0.5).setDepth(30);
 
-      const pickBtn = this.add.text(c.x + c.w / 2, c.y + c.h - 22, t('mini_rogue_select_btn'), {
+      const pickBtn = this.add.text(c.x + c.w / 2, c.y + c.h - 26, t('mini_rogue_select_btn'), {
         fontFamily: "'Orbitron', monospace",
-        fontSize: '11px',
+        fontSize: '13px',
         fontStyle: 'bold',
         color: '#00f3ff',
         backgroundColor: '#0c1626',
-        padding: { x: 8, y: 4 },
+        padding: { x: 16, y: 7 },
       }).setOrigin(0.5).setDepth(30).setInteractive({ useHandCursor: true });
 
       pickBtn.on('pointerdown', () => {
@@ -3400,7 +3435,7 @@ export class GameScene extends Phaser.Scene {
     } else if (this.isHelpOpen) {
       HudRenderer.renderHelpCard(g, cx, cy, width, height);
     } else if (!this.isRoundActive && this.coreHealth <= 0) {
-      HudRenderer.renderGameOverCard(g, cx, cy, this.isNewHighScore);
+      HudRenderer.renderGameOverCard(g, cx, cy, this.isNewHighScore, this.canReviveThisSession);
     } else if (this.isPaused) {
       HudRenderer.renderPauseCard(g, cx, cy, width, height);
     } else if (!this.isRoundActive && this.coreHealth > 0 && !this.restartAllowed) {
