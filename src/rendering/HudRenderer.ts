@@ -171,10 +171,10 @@ export class HudRenderer {
     isNewHighScore: boolean,
     canRevive: boolean = true
   ): void {
-    const cardW = 580;
-    const cardH = 360;
+    const cardW = 600;
+    const cardH = 390;
     const cardX = cx - cardW / 2;
-    const cardY = cy - cardH / 2 - 10;
+    const cardY = 55;
     const chamfer = 18;
 
     const cardPoly = [
@@ -188,43 +188,45 @@ export class HudRenderer {
       new Phaser.Math.Vector2(cardX, cardY + chamfer),
     ];
 
-    g.fillStyle(0x090d1a, 0.88);
+    g.fillStyle(0x090d1a, 0.92);
     g.fillPoints(cardPoly, true);
 
     const cardBorderColor = isNewHighScore ? 0xffea00 : 0xff1744;
     g.lineStyle(2, cardBorderColor, 0.85);
     g.strokePoints(cardPoly, true);
 
-    // Separador holográfico interno
+    // Separador holográfico interno abaixo do título / banner de recorde
+    const sepY = isNewHighScore ? (cardY + 84) : (cardY + 60);
     g.lineStyle(1, 0x00f3ff, 0.28);
-    g.lineBetween(cardX + 28, cardY + 74, cardX + cardW - 28, cardY + 74);
+    g.lineBetween(cardX + 28, sepY, cardX + cardW - 28, sepY);
 
     // Caixas diegéticas de botão arcade (Revive & Restart)
-    const btnW = 320;
-    const btnH = 42;
+    const btnW = 340;
+    const btnH = 38;
     const btnX = cx - btnW / 2;
 
     if (canRevive) {
       // 1. Botão Arcade Reviver (Ciano com chanfro e halo)
-      const rY = 309;
-      g.fillStyle(0x0c223c, 0.9);
+      const rY = 282;
+      g.fillStyle(0x0c223c, 0.95);
       g.fillRoundedRect(btnX, rY, btnW, btnH, 8);
       g.lineStyle(2, 0x00f3ff, 0.9);
       g.strokeRoundedRect(btnX, rY, btnW, btnH, 8);
 
       // 2. Botão Arcade Reiniciar (Âmbar com chanfro e halo)
-      const resY = 359;
-      g.fillStyle(0x2b1e06, 0.9);
+      const resY = 330;
+      g.fillStyle(0x2b1e06, 0.95);
       g.fillRoundedRect(btnX, resY, btnW, btnH, 8);
       g.lineStyle(2, 0xffea00, 0.9);
       g.strokeRoundedRect(btnX, resY, btnW, btnH, 8);
     } else {
       // Apenas Botão Arcade Reiniciar centralizado
-      const resY = 334;
-      g.fillStyle(0x2b1e06, 0.9);
-      g.fillRoundedRect(btnX, resY, btnW, btnH, 8);
+      const resY = 295;
+      const resH = 40;
+      g.fillStyle(0x2b1e06, 0.95);
+      g.fillRoundedRect(btnX, resY, btnW, resH, 8);
       g.lineStyle(2, 0xffea00, 0.9);
-      g.strokeRoundedRect(btnX, resY, btnW, btnH, 8);
+      g.strokeRoundedRect(btnX, resY, btnW, resH, 8);
     }
   }
 

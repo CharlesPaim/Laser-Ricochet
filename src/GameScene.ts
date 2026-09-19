@@ -856,47 +856,46 @@ export class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setVisible(false).setDepth(10);
 
     // Game Over UI Elements
-    this.gameOverTitle = this.add.text(TuningConfig.arena.centerX, 130, t('game_over_title'), {
+    this.gameOverTitle = this.add.text(TuningConfig.arena.centerX, 89, t('game_over_title'), {
       fontFamily: "'Orbitron', monospace",
-      fontSize: '34px',
+      fontSize: '26px',
       fontStyle: '900',
       align: 'center',
       color: '#ff1744',
     }).setOrigin(0.5).setVisible(false).setDepth(10);
 
-    this.gameOverRecordBanner = this.add.text(TuningConfig.arena.centerX, 172, t('game_over_new_record'), {
+    this.gameOverRecordBanner = this.add.text(TuningConfig.arena.centerX, 121, t('game_over_new_record'), {
       fontFamily: "'Orbitron', monospace",
-      fontSize: '19px',
+      fontSize: '15px',
       fontStyle: 'bold',
       align: 'center',
       color: '#ffea00',
     }).setOrigin(0.5).setVisible(false).setDepth(10);
 
-    this.gameOverStatsText = this.add.text(TuningConfig.arena.centerX, 242, '', {
+    this.gameOverStatsText = this.add.text(TuningConfig.arena.centerX, 150, '', {
       fontFamily: "'Rajdhani', sans-serif",
-      fontSize: '17px',
+      fontSize: '15px',
       fontStyle: '600',
       align: 'center',
       color: '#8ce8ff',
-      lineSpacing: 7,
-    }).setOrigin(0.5).setVisible(false).setDepth(10);
+      lineSpacing: 4,
+    }).setOrigin(0.5, 0).setVisible(false).setDepth(10);
 
     // Rewarded Video Revive Button (Poki Compliance: neutral cyan styling, not green, balanced hierarchy)
-    this.reviveButton = this.add.text(TuningConfig.arena.centerX, 330, t('btn_revive'), {
+    this.reviveButton = this.add.text(TuningConfig.arena.centerX, 301, t('btn_revive'), {
       fontFamily: "'Orbitron', monospace",
-      fontSize: '17px',
+      fontSize: '15px',
       fontStyle: 'bold',
       align: 'center',
       color: '#00f3ff',
-      backgroundColor: '#0c223c',
-      padding: { x: 26, y: 10 },
+      padding: { x: 30, y: 8 },
     }).setOrigin(0.5).setVisible(false).setInteractive({ useHandCursor: true }).setDepth(10);
 
     this.reviveButton.on('pointerover', () => {
-      this.reviveButton.setColor('#ffea00').setBackgroundColor('#163354');
+      this.reviveButton.setColor('#ffffff');
     });
     this.reviveButton.on('pointerout', () => {
-      this.reviveButton.setColor('#00f3ff').setBackgroundColor('#0c223c');
+      this.reviveButton.setColor('#00f3ff');
     });
     this.reviveButton.on('pointerdown', () => {
       if (!this.isRoundActive && this.canReviveThisSession && !this.isShowingAd) {
@@ -904,21 +903,20 @@ export class GameScene extends Phaser.Scene {
       }
     });
 
-    this.restartButton = this.add.text(TuningConfig.arena.centerX, 380, t('btn_restart'), {
+    this.restartButton = this.add.text(TuningConfig.arena.centerX, 349, t('btn_restart'), {
       fontFamily: "'Orbitron', monospace",
-      fontSize: '17px',
+      fontSize: '15px',
       fontStyle: 'bold',
       align: 'center',
       color: '#ffea00',
-      backgroundColor: '#2b1e06',
-      padding: { x: 26, y: 10 },
+      padding: { x: 30, y: 8 },
     }).setOrigin(0.5).setVisible(false).setInteractive({ useHandCursor: true }).setDepth(10);
 
     this.restartButton.on('pointerover', () => {
-      this.restartButton.setColor('#ffffff').setBackgroundColor('#47340d');
+      this.restartButton.setColor('#ffffff');
     });
     this.restartButton.on('pointerout', () => {
-      this.restartButton.setColor('#ffea00').setBackgroundColor('#2b1e06');
+      this.restartButton.setColor('#ffea00');
     });
     this.restartButton.on('pointerdown', () => {
       if (!this.isRoundActive && this.restartAllowed && !this.isShowingAd) {
@@ -927,9 +925,9 @@ export class GameScene extends Phaser.Scene {
       }
     });
 
-    this.restartHintText = this.add.text(TuningConfig.arena.centerX, 428, t('restart_hint'), {
+    this.restartHintText = this.add.text(TuningConfig.arena.centerX, 395, t('restart_hint'), {
       fontFamily: "'Rajdhani', sans-serif",
-      fontSize: '14px',
+      fontSize: '13px',
       align: 'center',
       color: '#8094ae',
     }).setOrigin(0.5).setVisible(false).setDepth(10);
@@ -3271,11 +3269,16 @@ export class GameScene extends Phaser.Scene {
       fragments: this.plasmaFragments,
     });
 
+    const cx = TuningConfig.arena.centerX;
     this.gameOverTitle.setText(t('game_over_title')).setVisible(true);
     if (this.isNewHighScore) {
-      this.gameOverRecordBanner.setText(t('game_over_new_record')).setVisible(true);
+      this.gameOverTitle.setPosition(cx, 89);
+      this.gameOverRecordBanner.setText(t('game_over_new_record')).setPosition(cx, 121).setVisible(true);
+      this.gameOverStatsText.setPosition(cx, 150);
     } else {
+      this.gameOverTitle.setPosition(cx, 95);
       this.gameOverRecordBanner.setVisible(false);
+      this.gameOverStatsText.setPosition(cx, 126);
     }
 
     const isEn = getLang() === 'en';
@@ -3310,15 +3313,16 @@ export class GameScene extends Phaser.Scene {
     this.coreHudText.setVisible(false);
     this.uiText.setVisible(false);
     this.statusText.setText('');
+    if (this.questHudText) this.questHudText.setVisible(false);
 
     if (this.canReviveThisSession) {
-      this.reviveButton.setPosition(TuningConfig.arena.centerX, 330).setVisible(true);
-      this.restartButton.setPosition(TuningConfig.arena.centerX, 380).setVisible(true);
-      this.restartHintText.setPosition(TuningConfig.arena.centerX, 428).setVisible(true);
+      this.reviveButton.setPosition(cx, 301).setVisible(true);
+      this.restartButton.setPosition(cx, 349).setVisible(true);
+      this.restartHintText.setPosition(cx, 395).setVisible(true);
     } else {
       this.reviveButton.setVisible(false);
-      this.restartButton.setPosition(TuningConfig.arena.centerX, 355).setVisible(true);
-      this.restartHintText.setPosition(TuningConfig.arena.centerX, 412).setVisible(true);
+      this.restartButton.setPosition(cx, 315).setVisible(true);
+      this.restartHintText.setPosition(cx, 365).setVisible(true);
     }
 
     this.render();
@@ -3653,6 +3657,7 @@ export class GameScene extends Phaser.Scene {
 
     this.uiText.setVisible(true);
     this.coreHudText.setVisible(true);
+    this.updateQuestUI();
 
     // Shockwave effect for revive
     this.shockwaves.push({
